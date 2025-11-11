@@ -1,0 +1,280 @@
+:root {
+    --font-display: 'Press Start 2P', cursive;
+    --font-body: 'Roboto', sans-serif;
+    --bg-overlay: linear-gradient(120deg, rgba(10, 12, 52, 0.8), rgba(203, 134, 214, 0.6));
+    --bg-overlay-alt: linear-gradient(120deg, rgba(28, 19, 84, 0.85), rgba(156, 216, 255, 0.5));
+    --btn-gradient: linear-gradient(90deg, #ff9a3d, #ff6ad5, #8d7dff);
+    --transition: 0.6s ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: #fff;
+    min-height: 100vh;
+}
+
+.game {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(2rem, 5vw, 3.5rem);
+    text-align: center;
+    transition: opacity var(--transition), transform var(--transition);
+    opacity: 0;
+    transform: scale(1.05);
+    pointer-events: none;
+    overflow-y: auto;  /* allow vertical scroll */
+    overflow-x: hidden; /* prevent horizontal scroll */
+}
+
+.slide.is-active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.slide--intro {
+    background: var(--bg-overlay-alt),
+        url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed;
+}
+
+/* Move intro content closer to logo */
+.slide--intro {
+    justify-content: flex-start;
+}
+.slide--intro .slide__content {
+    margin-top: clamp(1rem, 8vh, 3rem);
+}
+
+.slide--world {
+    background: var(--bg-overlay),
+        url('https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed;
+}
+/* Center content on worlds page while keeping header logo top-left */
+.slide--world {
+    display: flex;            /* center content like other slides */
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;       /* ensure no sideways scroll on worlds */
+}
+.slide--world .slide__header {
+    position: absolute;
+    top: clamp(2rem, 5vw, 3.5rem);
+    left: clamp(2rem, 5vw, 3.5rem);
+}
+/* World select content: tighter width so buttons group together */
+.slide--world .slide__content {
+    width: min(100%, 780px);
+    max-width: 780px;
+    margin: 0 auto;
+    justify-items: center;
+}
+
+.slide__header {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.logo {
+    width: clamp(140px, 18vw, 220px);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
+    padding: 8px 12px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+}
+
+.slide__content {
+    display: grid;
+    gap: clamp(1.25rem, 4vw, 2.5rem);
+    align-items: center;
+    justify-items: center;
+    width: min(100%, 780px);
+}
+
+/* Back button (secondary) */
+.btn.btn--secondary {
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: none;
+}
+.btn.btn--secondary:hover,
+.btn.btn--secondary:focus {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.slide__title {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    text-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Reduce title size on world select screen */
+.slide--world .slide__title {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    letter-spacing: 0.25em;
+}
+
+.slide__quote {
+    margin: 0;
+    line-height: 1.8;
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 1.5rem 2rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+    font-weight: 300;
+}
+
+.btn {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    padding: 1.2rem 2.5rem;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: var(--btn-gradient);
+    color: #fff;
+    box-shadow: 0 18px 35px rgba(255, 138, 216, 0.4);
+}
+
+.btn:focus,
+.btn:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 24px 40px rgba(255, 138, 216, 0.6);
+}
+
+.btn:active {
+    transform: translateY(1px) scale(0.99);
+}
+
+.world-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    grid-auto-rows: auto;
+    gap: clamp(0.75rem, 2.5vw, 1.25rem);
+    width: auto;            /* shrink to content */
+    place-items: center;
+    place-content: center;
+}
+
+.world-card {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 1rem 1.8rem;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    color: #fff;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+.world-card:hover,
+.world-card:focus {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Colored button looks for each world */
+.world-card--green { background: linear-gradient(90deg, #2ecc71, #7bed9f); }
+.world-card--pink { background: linear-gradient(90deg, #ff5fbd, #ffa6f6); }
+.world-card--purple { background: linear-gradient(90deg, #7865ff, #b388ff); }
+.world-card--orange { background: linear-gradient(90deg, #ff8c1a, #ffd56a); }
+
+/* Detail slides for each world */
+.slide--home {
+    background: var(--bg-overlay),
+        url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed; /* Home exterior */
+}
+
+.slide--friendship {
+    background: var(--bg-overlay),
+        url('https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed; /* Friends together */
+}
+
+.slide--school {
+    background: var(--bg-overlay),
+        url('https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed;
+}
+
+.slide--dream {
+    background: var(--bg-overlay),
+        url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat fixed; /* Castle */
+}
+
+@media (max-width: 768px) {
+    .slide__title {
+        letter-spacing: 0.2em;
+    }
+
+    .slide__quote {
+        padding: 1.2rem 1.4rem;
+    }
+
+    .btn {
+        letter-spacing: 0.2em;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Coming Soon common styles */
+.coming-soon {
+    display: grid;
+    gap: 1rem;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+.coming-soon h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    letter-spacing: 0.2em;
+}
+.coming-soon .lock {
+    color: #ffffffcc;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+}
+
+/* Center Coming Soon blocks vertically within slides */
+.slide--home .slide__content,
+.slide--friendship .slide__content,
+.slide--school .slide__content,
+.slide--dream .slide__content {
+    margin-top: auto;
+    margin-bottom: auto;
+}
