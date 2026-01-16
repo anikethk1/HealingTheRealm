@@ -1,0 +1,14 @@
+{
+  "name": "mhisa-game",
+  "version": "1.0.0",
+  "description": "Mental Health Game with auth",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
+  }
+}
