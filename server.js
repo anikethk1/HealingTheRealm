@@ -35,6 +35,17 @@ db.serialize(() => {
             FOREIGN KEY(username) REFERENCES users(username)
         )
     `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS checkins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            mood INTEGER NOT NULL,
+            has_goals INTEGER NOT NULL,
+            has_selftime INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(username) REFERENCES users(username)
+        )
+    `);
 });
 
 app.use(express.json());
@@ -146,6 +157,61 @@ app.delete('/api/goals/:id', (req, res) => {
         if (this.changes === 0) return sendError(res, 'Goal not found.', 404);
         res.json({ ok: true });
     });
+});
+
+// Daily check-ins
+app.get('/api/checkins/latest', (req, res) => {
+    const { username } = req.query;
+    if (!username) return sendError(res, 'Username required.', 400);
+    const normalized = username.trim().toLowerCase();
+    db.get(
+        'SELECT id, mood, has_goals, has_selftime, created_at FROM checkins WHERE username = ? ORDER BY created_at DESC LIMIT 1',
+        [normalized],
+        (err, row) => {
+            if (err) return sendError(res, 'Database error.', 500);
+            res.json({ ok: true, checkin: row || null });
+        }
+    );
+});
+
+app.post('/api/checkins', (req, res) => {
+    const { username, mood, hasGoals, hasSelftime } = req.body || {};
+    if (!username || mood == null || hasGoals == null || hasSelftime == null) {
+        return sendError(res, 'All fields are required.');
+    }
+    const normalized = username.trim().toLowerCase();
+    const moodVal = Number(mood);
+    if (Number.isNaN(moodVal) || moodVal < 1 || moodVal > 5) {
+        return sendError(res, 'Mood must be between 1 and 5.');
+    }
+
+    const now = Date.now();
+    const since = now - 24 * 60 * 60 * 1000;
+    db.get(
+        'SELECT created_at FROM checkins WHERE username = ? ORDER BY created_at DESC LIMIT 1',
+        [normalized],
+        (err, row) => {
+            if (err) return sendError(res, 'Database error.', 500);
+            if (row) {
+                const last = new Date(row.created_at).getTime();
+                if (last && last > since) {
+                    return sendError(res, 'Check-in already submitted in the last 24 hours.');
+                }
+            }
+
+            db.run(
+                'INSERT INTO checkins (username, mood, has_goals, has_selftime) VALUES (?, ?, ?, ?)',
+                [normalized, moodVal, hasGoals ? 1 : 0, hasSelftime ? 1 : 0],
+                function (insertErr) {
+                    if (insertErr) return sendError(res, 'Could not save check-in.', 500);
+                    db.get('SELECT id, mood, has_goals, has_selftime, created_at FROM checkins WHERE id = ?', [this.lastID], (gErr, newRow) => {
+                        if (gErr) return sendError(res, 'Database error.', 500);
+                        res.json({ ok: true, checkin: newRow });
+                    });
+                }
+            );
+        }
+    );
 });
 
 app.listen(PORT, () => {
