@@ -179,7 +179,6 @@
                 <img class="logo" src="MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <div class="slide__actions">
-                    <button class="btn btn--secondary btn--accent btn--small" id="add-goal-toggle" type="button">+ Add Goal</button>
                     <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
                 </div>
             </header>
@@ -187,9 +186,8 @@
                 <div class="goals-panel" role="region" aria-label="Personal Mental Health Goals">
                     <div class="goals-header">
                         <h2>Personal Mental Health Goals</h2>
-                        <button class="btn btn--secondary btn--accent btn--small" id="add-goal-toggle-inline" type="button">+ Add Goal</button>
                     </div>
-                    <form class="goal-form" id="goal-form" hidden>
+                    <form class="goal-form" id="goal-form">
                         <label class="field">
                             <span>Title</span>
                             <input name="title" type="text" required />
@@ -198,9 +196,7 @@
                             <span>Description</span>
                             <textarea name="description" rows="3" required></textarea>
                         </label>
-                        <div class="goal-actions">
-                            <button class="btn btn--accent" type="submit">Create Goal</button>
-                            <button class="btn btn--secondary btn--small" type="button" id="cancel-goal">Cancel</button>
+                        <div class="goal-actions"><button class="btn btn--accent" type="submit">Create Goal</button>
                         </div>
                         <p class="auth-message" id="goal-message" hidden></p>
                     </form>
@@ -266,4 +262,5 @@
 </body>
 
 </html>
+
 

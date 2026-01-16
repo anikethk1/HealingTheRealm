@@ -124,12 +124,25 @@ app.post('/api/goals', (req, res) => {
 });
 
 app.patch('/api/goals/:id/complete', (req, res) => {
+    const { username, completed } = req.body || {};
+    const goalId = Number(req.params.id);
+    if (!username || Number.isNaN(goalId)) return sendError(res, 'Username and goal id required.');
+    const normalized = username.trim().toLowerCase();
+    const completedValue = completed ? 1 : 0;
+    db.run('UPDATE goals SET completed = ? WHERE id = ? AND username = ?', [completedValue, goalId, normalized], function (err) {
+        if (err) return sendError(res, 'Could not update goal.', 500);
+        if (this.changes === 0) return sendError(res, 'Goal not found.', 404);
+        res.json({ ok: true });
+    });
+});
+
+app.delete('/api/goals/:id', (req, res) => {
     const { username } = req.body || {};
     const goalId = Number(req.params.id);
-    if (!username || !goalId) return sendError(res, 'Username and goal id required.');
+    if (!username || Number.isNaN(goalId)) return sendError(res, 'Username and goal id required.');
     const normalized = username.trim().toLowerCase();
-    db.run('UPDATE goals SET completed = 1 WHERE id = ? AND username = ?', [goalId, normalized], function (err) {
-        if (err) return sendError(res, 'Could not update goal.', 500);
+    db.run('DELETE FROM goals WHERE id = ? AND username = ?', [goalId, normalized], function (err) {
+        if (err) return sendError(res, 'Could not delete goal.', 500);
         if (this.changes === 0) return sendError(res, 'Goal not found.', 404);
         res.json({ ok: true });
     });

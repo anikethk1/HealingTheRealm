@@ -87,9 +87,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const initialFromHash = location.hash ? location.hash.slice(1) : null;
     const initial = isAuthenticated() ? (initialFromHash || 'intro-slide') : 'login-slide';
     navigateTo(initial, false);
-    if (isAuthenticated()) {
-        loadGoals();
-    }
+    if (isAuthenticated()) loadGoals();
 });
 
 async function submitForm(endpoint, payload) {
@@ -144,8 +142,8 @@ if (loginForm) {
             setAuthUser(data.username);
             showMessage(loginMessage, '', 'success');
             showToast('Login successful!', 'success');
+            await loadGoals();
             navigateTo('intro-slide');
-            loadGoals();
         } catch (err) {
             showMessage(loginMessage, err.message, 'error');
         }
@@ -168,9 +166,6 @@ logoutButtons.forEach(btn => {
 const goalForm = document.getElementById('goal-form');
 const goalList = document.getElementById('goal-list');
 const goalMessage = document.getElementById('goal-message');
-const addGoalToggle = document.getElementById('add-goal-toggle');
-const addGoalToggleInline = document.getElementById('add-goal-toggle-inline');
-const cancelGoal = document.getElementById('cancel-goal');
 let goals = [];
 
 function renderGoals() {
@@ -179,7 +174,7 @@ function renderGoals() {
     if (!goals.length) {
         const empty = document.createElement('p');
         empty.className = 'goal-empty';
-        empty.textContent = 'No goals yet. Add your first one!';
+        empty.textContent = 'No goals added.';
         goalList.appendChild(empty);
         return;
     }
@@ -206,10 +201,16 @@ function renderGoals() {
         const completeBtn = document.createElement('button');
         completeBtn.type = 'button';
         completeBtn.className = 'btn btn--secondary btn--accent btn--small';
-        completeBtn.textContent = goal.completed ? 'Completed' : 'Mark Completed';
-        completeBtn.disabled = Boolean(goal.completed);
-        completeBtn.addEventListener('click', () => markGoalComplete(goal.id));
+        completeBtn.textContent = goal.completed ? 'Mark Incomplete' : 'Mark Completed';
+        completeBtn.addEventListener('click', () => setGoalCompleted(goal.id, goal.completed ? 0 : 1));
         actions.appendChild(completeBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn--secondary btn--small';
+        deleteBtn.textContent = '🗑 Delete';
+        deleteBtn.addEventListener('click', () => deleteGoal(goal.id));
+        actions.appendChild(deleteBtn);
 
         card.appendChild(info);
         card.appendChild(actions);
@@ -231,20 +232,42 @@ async function loadGoals() {
 }
 
 async function markGoalComplete(id) {
+    return setGoalCompleted(id, 1);
+}
+
+async function setGoalCompleted(id, completedValue) {
     if (!authUser) return;
     try {
         const res = await fetch(`/api/goals/${id}/complete`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: authUser })
+            body: JSON.stringify({ username: authUser, completed: completedValue })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.message || 'Could not update goal.');
-        goals = goals.map(g => g.id === id ? { ...g, completed: 1 } : g);
+        goals = goals.map(g => g.id === id ? { ...g, completed: completedValue } : g);
         renderGoals();
-        showToast('Goal marked completed.', 'success');
+        showToast(completedValue ? 'Goal marked completed.' : 'Goal marked incomplete.', 'success');
     } catch (err) {
         showToast(err.message || 'Update failed.', 'error');
+    }
+}
+
+async function deleteGoal(id) {
+    if (!authUser) return;
+    try {
+        const res = await fetch(`/api/goals/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: authUser })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.message || 'Could not delete goal.');
+        goals = goals.filter(g => g.id !== id);
+        renderGoals();
+        showToast('Goal deleted.', 'success');
+    } catch (err) {
+        showToast(err.message || 'Delete failed.', 'error');
     }
 }
 
@@ -270,7 +293,6 @@ if (goalForm) {
             goals = [data.goal, ...goals];
             renderGoals();
             goalForm.reset();
-            goalForm.hidden = true;
             showMessage(goalMessage, '', 'info');
             showToast('Goal added.', 'success');
         } catch (err) {
@@ -278,17 +300,3 @@ if (goalForm) {
         }
     });
 }
-
-function toggleGoalForm(show) {
-    if (!goalForm) return;
-    goalForm.hidden = !show;
-}
-
-[addGoalToggle, addGoalToggleInline].forEach(btn => {
-    btn?.addEventListener('click', () => toggleGoalForm(true));
-});
-cancelGoal?.addEventListener('click', () => {
-    goalForm?.reset();
-    toggleGoalForm(false);
-    showMessage(goalMessage, '', 'info');
-});
