@@ -2,6 +2,7 @@ const slides = document.querySelectorAll('.slide');
 const toast = document.getElementById('toast');
 let toastTimer = null;
 let authUser = localStorage.getItem('authUser') || null;
+const fullscreenBtn = document.getElementById('fullscreen-toggle');
 
 // Toast helper
 function showToast(message, type = 'success', duration = 2200) {
@@ -389,6 +390,28 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Fullscreen toggle
+function toggleFullscreen() {
+    const target = document.querySelector('.playfield');
+    if (!target) return;
+    if (document.fullscreenElement) {
+        document.exitFullscreen?.();
+    } else {
+        target.requestFullscreen?.();
+    }
+}
+fullscreenBtn?.addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', () => {
+    if (!fullscreenBtn) return;
+    fullscreenBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
+});
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'f' && !e.repeat) {
+        e.preventDefault();
+        toggleFullscreen();
+    }
+});
+
 // --- Simple field + school world demo ---
 let worldBooted = false;
 let canvas, ctx;
@@ -629,8 +652,8 @@ function drawNPC() {
 
 function drawPortal() {
     if (!portalVisible || inSchool) { portalPos = null; return; }
-    const x = tile * 1.5;
-    const y = roadY + roadHeight/2 - 6;
+    const x = tile * 1.5; // centered left on road
+    const y = roadY + roadHeight / 2; // exact road center
     const grd = ctx.createRadialGradient(x,y,6,x,y,22);
     grd.addColorStop(0,'rgba(80,180,255,0.6)');
     grd.addColorStop(1,'rgba(80,180,255,0)');
@@ -640,7 +663,9 @@ function drawPortal() {
     ctx.beginPath();ctx.ellipse(x,y,18,8,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle = '#57c5ff';
     ctx.beginPath();ctx.ellipse(x,y,10,4,0,0,Math.PI*2);ctx.fill();
-    portalPos = {x, y: y-8, rx:9, ry:3};
+    // Hitbox raised to align with the visible portal center
+    // Raise hitbox roughly half a tile above the portal center
+    portalPos = {x, y: y - tile/2, rx:8, ry:3};
 }
 
 function drawSchool() {
