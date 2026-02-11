@@ -454,6 +454,7 @@ let inSchool = false;
 const roadHeight = tile * 2;
 let roadY = 0;
 let portalPos = null;
+let schoolRect = null;
 const door = { x: 0, y: 0, w: 34, h: 48 };
 let doorCooldown = false;
 
@@ -581,6 +582,19 @@ function handleKeyUp(e) {
 }
 
 function blocked(x, y) {
+    if (inSchool && schoolRect) {
+        const inside = x > schoolRect.x1 && x < schoolRect.x2 && y > schoolRect.y1 && y < schoolRect.y2;
+        if (!inside) return false;
+
+        // Doorway passage: allow through the doorway from ground up to the door height
+        const doorwayWidth = door.w + 8;
+        const dx1 = door.x - doorwayWidth / 2;
+        const dx2 = door.x + doorwayWidth / 2;
+        const dy1 = door.y - door.h / 2 - 4; // just below the door top
+        const dy2 = schoolRect.y2 + 20;      // extend to ground
+        const inDoorway = x > dx1 && x < dx2 && y > dy1 && y < dy2;
+        return !inDoorway; // block everywhere except doorway
+    }
     const col = Math.floor(x / tile);
     const row = Math.floor(y / tile);
     return fieldMap[row]?.[col] === 1;
@@ -684,18 +698,18 @@ function drawSchool() {
     const bH = canvas.height*0.55;
     const bX = (canvas.width-bW)/2;
     const bY = canvas.height*0.18;
-    const depth = 28;
-    const mainColor='#d55353', sideColor='#c14343', roofColor='#b63f3f', roofShade='#9e2f2f';
+    const mainColor='#d55353', shadowColor='rgba(0,0,0,0.18)', roofColor='#b63f3f';
+    // Main block
     ctx.fillStyle=mainColor; ctx.fillRect(bX,bY,bW,bH);
-    ctx.fillStyle=sideColor;
-    ctx.beginPath();ctx.moveTo(bX,bY);ctx.lineTo(bX-depth,bY-10);ctx.lineTo(bX-depth,bY+bH-10);ctx.lineTo(bX,bY+bH);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(bX+bW,bY);ctx.lineTo(bX+bW+depth,bY-10);ctx.lineTo(bX+bW+depth,bY+bH-10);ctx.lineTo(bX+bW,bY+bH);ctx.closePath();ctx.fill();
+    // Shadows along sides and a thin front drop
+    ctx.fillStyle = shadowColor;
+    ctx.fillRect(bX + bW, bY + 8, 12, bH);      // right side shadow
+    ctx.fillRect(bX - 12, bY + 8, 12, bH);      // left side shadow
+    ctx.fillRect(bX, bY + bH, bW, 10);          // front base shadow
+    // Roof triangle
     ctx.fillStyle=roofColor;
-    ctx.beginPath();ctx.moveTo(bX,bY);ctx.lineTo(bX+bW/2,bY-50);ctx.lineTo(bX+bW,bY);ctx.closePath();ctx.fill();
-    ctx.fillRect(bX,bY-18,bW,18);
-    ctx.fillStyle=roofShade;
-    ctx.beginPath();ctx.moveTo(bX+bW,bY-18);ctx.lineTo(bX+bW+depth,bY-6);ctx.lineTo(bX+bW+depth,bY+6);ctx.lineTo(bX+bW,bY-6);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(bX,bY-18);ctx.lineTo(bX-depth,bY-6);ctx.lineTo(bX-depth,bY+6);ctx.lineTo(bX,bY-6);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(bX, bY);ctx.lineTo(bX+bW/2, bY-40);ctx.lineTo(bX+bW, bY);ctx.closePath();ctx.fill();
+    ctx.fillRect(bX, bY-16, bW, 16);
     // windows
     ctx.fillStyle='#f0f7ff'; ctx.strokeStyle='#b43d3d'; ctx.lineWidth=2;
     const cols=5, rows=3, padX=20, padY=40, winW=34, winH=28, gapX=(bW-padX*2-cols*winW)/(cols-1), gapY=22;
@@ -710,7 +724,14 @@ function drawSchool() {
     }
     // door
     door.x = canvas.width*0.5;
-    door.y = bY + bH - door.h/2 - 8;
+    door.y = bY + bH - door.h/2 + 4; // attached to building, near ground
+    // Building collision rect (blocks movement)
+    schoolRect = {
+        x1: bX,
+        x2: bX + bW,
+        y1: bY - 20, // include roof area as blocked
+        y2: bY + bH
+    };
     drawDoor();
     // sign
     const signW=145, signH=18;
@@ -751,7 +772,7 @@ function loop(now) {
     const nx = hero.x + vx;
     const ny = hero.y + vy;
     const pad = hero.size/2;
-    const block = (x,y)=> inSchool ? false : blocked(x,y);
+    const block = (x,y)=> blocked(x,y);
     if (!block(nx-pad, hero.y) && !block(nx+pad, hero.y)) hero.x = nx;
     if (!block(hero.x, ny-pad) && !block(hero.x, ny+pad)) hero.y = ny;
 
@@ -768,7 +789,11 @@ function loop(now) {
     }
 
     if (!inSchool) {
-        const fx1 = npc.x - 24, fx2 = npc.x + 24, fy1 = npc.y - 10, fy2 = npc.y + 40;
+        // Interaction zone: near the NPC along the road band
+        const fx1 = npc.x - 48;
+        const fx2 = npc.x + 48;
+        const fy1 = npc.y - 6;   // slightly above eyes
+        const fy2 = npc.y + 34;  // extends down the road but not behind
         const inFront = hero.x > fx1 && hero.x < fx2 && hero.y > fy1 && hero.y < fy2;
         if (inFront && !dialogActive && !portalVisible) {
             dialogStep = 0;
