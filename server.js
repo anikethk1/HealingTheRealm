@@ -46,6 +46,16 @@ db.serialize(() => {
             FOREIGN KEY(username) REFERENCES users(username)
         )
     `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS journals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            body TEXT NOT NULL,
+            entry_date TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(username) REFERENCES users(username)
+        )
+    `);
 });
 
 app.use(express.json());
@@ -174,6 +184,18 @@ app.get('/api/checkins/latest', (req, res) => {
     );
 });
 
+app.delete('/api/journals/:id', (req, res) => {
+    const { username } = req.body || {};
+    const journalId = Number(req.params.id);
+    if (!username || Number.isNaN(journalId)) return sendError(res, 'Username and journal id required.');
+    const normalized = username.trim().toLowerCase();
+    db.run('DELETE FROM journals WHERE id = ? AND username = ?', [journalId, normalized], function (err) {
+        if (err) return sendError(res, 'Could not delete journal.', 500);
+        if (this.changes === 0) return sendError(res, 'Journal not found.', 404);
+        res.json({ ok: true });
+    });
+});
+
 app.post('/api/checkins', (req, res) => {
     const { username, mood, hasGoals, hasSelftime } = req.body || {};
     if (!username || mood == null || hasGoals == null || hasSelftime == null) {
@@ -210,6 +232,41 @@ app.post('/api/checkins', (req, res) => {
                     });
                 }
             );
+        }
+    );
+});
+
+// Journals
+app.get('/api/journals', (req, res) => {
+    const { username } = req.query;
+    if (!username) return sendError(res, 'Username required.', 400);
+    const normalized = username.trim().toLowerCase();
+    db.all(
+        'SELECT id, body, entry_date, created_at FROM journals WHERE username = ? ORDER BY created_at DESC',
+        [normalized],
+        (err, rows) => {
+            if (err) return sendError(res, 'Database error.', 500);
+            res.json({ ok: true, journals: rows || [] });
+        }
+    );
+});
+
+app.post('/api/journals', (req, res) => {
+    const { username, body, entryDate } = req.body || {};
+    if (!username || !body) return sendError(res, 'Username and body are required.');
+    const normalized = username.trim().toLowerCase();
+    const cleanBody = String(body).trim();
+    if (!cleanBody) return sendError(res, 'Journal entry cannot be empty.');
+    const dateVal = entryDate ? String(entryDate).trim() : null;
+    db.run(
+        'INSERT INTO journals (username, body, entry_date) VALUES (?, ?, ?)',
+        [normalized, cleanBody, dateVal],
+        function (err) {
+            if (err) return sendError(res, 'Could not save journal.', 500);
+            db.get('SELECT id, body, entry_date, created_at FROM journals WHERE id = ?', [this.lastID], (gErr, row) => {
+                if (gErr) return sendError(res, 'Database error.', 500);
+                res.json({ ok: true, journal: row });
+            });
         }
     );
 });

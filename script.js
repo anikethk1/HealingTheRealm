@@ -38,6 +38,9 @@ function showSlide(id) {
         const active = slide === next;
         slide.classList.toggle('is-active', active);
         slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+        if (active && slide.id === 'world-slide') {
+            startWorldDemo();
+        }
     });
     const focusTarget = next.querySelector('[autofocus], .world-card, .btn, input');
     focusTarget?.focus({ preventScroll: true });
@@ -385,3 +388,410 @@ window.addEventListener('DOMContentLoaded', () => {
         loadCheckin();
     }
 });
+
+// --- Simple field + school world demo ---
+let worldBooted = false;
+let canvas, ctx;
+const tile = 32;
+const fieldMap = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+let colors = [];
+let tufts = [];
+let hero = { x: 0, y: 0, speed: 140, size: 20, dir: 'right', frame: 0, frameTimer: 0 };
+let npc = { x: 0, y: 0, dir: 'left' };
+let keysDown = new Set();
+let lastTime = 0;
+let dialogBox = document.getElementById('dialog-box');
+let dialogText = document.getElementById('dialog-text');
+let dialogNext = document.getElementById('dialog-next');
+const loadingOverlay = document.getElementById('loading-overlay');
+let dialogTimer = null;
+let dialogActive = false;
+let dialogComplete = false;
+let currentDialog = '';
+let dialogStep = 0;
+const npcDialog = [
+    'Welcome to the Game!',
+    'This game is a mental health game created by MHISA (The Mental Health Initiative for South Asians), a student organization from the University of Texas at Austin.',
+    "I'm not going to spoil too much for you, but why don't we get you started. A portal should appear once you've completed reading this, go to the portal to start your mental health journey!"
+];
+let portalVisible = false;
+let loading = false;
+let inSchool = false;
+const roadHeight = tile * 2;
+let roadY = 0;
+let portalPos = null;
+const door = { x: 0, y: 0, w: 34, h: 48 };
+let doorCooldown = false;
+
+function initFieldPalette() {
+    colors = fieldMap.map(row => row.map(() => (Math.random() > 0.5 ? '#84d58a' : '#7ccf82')));
+    tufts = fieldMap.map(row => row.map(() => (Math.random() > 0.7)));
+}
+
+function showDialog(text, instant = false) {
+    if (!dialogBox || !dialogText) return;
+    hideDialog();
+    dialogActive = true;
+    dialogComplete = false;
+    currentDialog = text;
+    dialogBox.hidden = false;
+    if (dialogNext) dialogNext.hidden = true;
+    dialogText.textContent = '';
+    clearInterval(dialogTimer);
+    if (instant) {
+        dialogText.textContent = text;
+        dialogComplete = true;
+        if (dialogNext) dialogNext.hidden = false;
+        return;
+    }
+    let idx = 0;
+    dialogTimer = setInterval(() => {
+        if (idx >= text.length) {
+            finishDialog();
+            return;
+        }
+        dialogText.textContent += text[idx++];
+    }, 30);
+}
+function finishDialog() {
+    if (!dialogActive || !dialogText) return;
+    dialogText.textContent = currentDialog;
+    dialogComplete = true;
+    if (dialogNext) dialogNext.hidden = false;
+    clearInterval(dialogTimer);
+}
+function hideDialog() {
+    clearInterval(dialogTimer);
+    dialogActive = false;
+    dialogComplete = false;
+    currentDialog = '';
+    if (dialogBox) dialogBox.hidden = true;
+    if (dialogNext) dialogNext.hidden = true;
+    if (dialogText) dialogText.textContent = '';
+}
+
+function startWorldDemo() {
+    if (worldBooted) return;
+    worldBooted = true;
+    canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
+    ctx = canvas.getContext('2d');
+    canvas.width = fieldMap[0].length * tile;
+    canvas.height = fieldMap.length * tile;
+    roadY = canvas.height / 2 - roadHeight / 2;
+    initFieldPalette();
+    hero.x = tile * 2;
+    hero.y = canvas.height / 2;
+    npc.x = canvas.width - tile * 2;
+    npc.y = roadY - 8;
+    dialogStep = 0;
+    portalVisible = false;
+    inSchool = false;
+    doorCooldown = false;
+    keysDown.clear();
+    lastTime = performance.now();
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    dialogNext?.addEventListener('click', handleDialogNext);
+    document.addEventListener('mousedown', (e) => {
+        if (dialogActive && !dialogComplete) {
+            finishDialog();
+            e.stopPropagation();
+        }
+    });
+    requestAnimationFrame(loop);
+}
+
+function handleDialogNext() {
+    if (!dialogActive) return;
+    if (!dialogComplete) {
+        finishDialog();
+        return;
+    }
+
+    // NPC 3-line sequence
+    if (dialogStep < npcDialog.length - 1) {
+        dialogStep += 1;
+        showDialog(npcDialog[dialogStep]);
+        return;
+    }
+    // Finished the last line: reveal portal and close dialog
+    if (dialogStep === npcDialog.length - 1) {
+        portalVisible = true;
+        hideDialog();
+        return;
+    }
+
+    // Generic dialogs (door / loading) just close
+    hideDialog();
+}
+
+function handleKeyDown(e) {
+    const k = e.key.toLowerCase();
+    if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
+        if (dialogActive || loading) {
+            e.preventDefault();
+            return;
+        }
+        keysDown.add(k);
+        e.preventDefault();
+    }
+    if (dialogActive && ['enter',' '].includes(k)) {
+        e.preventDefault();
+        if (!dialogComplete) finishDialog(); else hideDialog();
+    }
+}
+function handleKeyUp(e) {
+    keysDown.delete(e.key.toLowerCase());
+}
+
+function blocked(x, y) {
+    const col = Math.floor(x / tile);
+    const row = Math.floor(y / tile);
+    return fieldMap[row]?.[col] === 1;
+}
+
+function drawField() {
+    for (let r=0;r<fieldMap.length;r++){
+        for (let c=0;c<fieldMap[r].length;c++){
+            ctx.fillStyle = colors[r][c];
+            ctx.fillRect(c*tile, r*tile, tile, tile);
+            if (!fieldMap[r][c] && tufts[r][c]) {
+                ctx.fillStyle = '#5ba764';
+                ctx.fillRect(c*tile+10, r*tile+10, 4, 8);
+            }
+        }
+    }
+    // road
+    ctx.fillStyle = '#5a5a5a';
+    ctx.fillRect(0, roadY, canvas.width, roadHeight);
+    ctx.strokeStyle = '#ffeb3b';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([16,10]);
+    ctx.beginPath();
+    ctx.moveTo(0, roadY + roadHeight/2);
+    ctx.lineTo(canvas.width, roadY + roadHeight/2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawHero() {
+    ctx.save();
+    ctx.translate(hero.x, hero.y);
+    if (hero.dir === 'left') ctx.scale(-1,1);
+    ctx.fillStyle = '#2e2e2e';
+    ctx.beginPath();
+    ctx.ellipse(0,20,10,4,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#2d2d2d';
+    ctx.fillRect(-9 + (hero.frame?2:-2), 12, 6, 10);
+    ctx.fillRect(3 - (hero.frame?2:-2), 12, 6, 10);
+    ctx.fillStyle = '#e45c5c';
+    ctx.fillRect(-10, 0, 20, 12);
+    ctx.fillStyle = '#1c1c1c';
+    ctx.fillRect(-10, 10, 20, 3);
+    ctx.fillStyle = '#f1d5b0';
+    ctx.fillRect(-8, -10, 16, 10);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-8, -12, 16, 4);
+    ctx.fillStyle = '#1c1c1c';
+    const eyeY = hero.dir === 'up' ? -7 : -6;
+    ctx.fillRect(-4, eyeY, 2, 2);
+    ctx.fillRect(2, eyeY, 2, 2);
+    ctx.restore();
+}
+
+function drawNPC() {
+    ctx.save();
+    ctx.translate(npc.x, npc.y);
+    ctx.scale(-1,1);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();ctx.ellipse(0,18,10,4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle = '#3a6de0';ctx.fillRect(-9,-2,18,12);
+    ctx.fillStyle = '#2b2b2b';ctx.fillRect(-8,10,6,10);ctx.fillRect(2,10,6,10);
+    ctx.fillStyle = '#f1d5b0';ctx.fillRect(-7,-10,14,10);
+    ctx.fillStyle = '#222';ctx.fillRect(-7,-12,14,4);
+    ctx.fillStyle = '#1c1c1c';ctx.fillRect(-3,-6,2,2);ctx.fillRect(1,-6,2,2);
+    ctx.restore();
+}
+
+function drawPortal() {
+    if (!portalVisible || inSchool) { portalPos = null; return; }
+    const x = tile * 1.5;
+    const y = roadY + roadHeight/2 - 6;
+    const grd = ctx.createRadialGradient(x,y,6,x,y,22);
+    grd.addColorStop(0,'rgba(80,180,255,0.6)');
+    grd.addColorStop(1,'rgba(80,180,255,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();ctx.arc(x,y,22,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle = '#0f1c2b';
+    ctx.beginPath();ctx.ellipse(x,y,18,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle = '#57c5ff';
+    ctx.beginPath();ctx.ellipse(x,y,10,4,0,0,Math.PI*2);ctx.fill();
+    portalPos = {x, y: y-8, rx:9, ry:3};
+}
+
+function drawSchool() {
+    // background grass reused
+    for (let r=0;r<fieldMap.length;r++){
+        for (let c=0;c<fieldMap[r].length;c++){
+            ctx.fillStyle = colors[r][c];
+            ctx.fillRect(c*tile, r*tile, tile, tile);
+            if (tufts[r][c]) {
+                ctx.fillStyle = '#5ba764';
+                ctx.fillRect(c*tile+10, r*tile+10, 4, 8);
+            }
+        }
+    }
+    const bW = canvas.width*0.68;
+    const bH = canvas.height*0.55;
+    const bX = (canvas.width-bW)/2;
+    const bY = canvas.height*0.18;
+    const depth = 28;
+    const mainColor='#d55353', sideColor='#c14343', roofColor='#b63f3f', roofShade='#9e2f2f';
+    ctx.fillStyle=mainColor; ctx.fillRect(bX,bY,bW,bH);
+    ctx.fillStyle=sideColor;
+    ctx.beginPath();ctx.moveTo(bX,bY);ctx.lineTo(bX-depth,bY-10);ctx.lineTo(bX-depth,bY+bH-10);ctx.lineTo(bX,bY+bH);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(bX+bW,bY);ctx.lineTo(bX+bW+depth,bY-10);ctx.lineTo(bX+bW+depth,bY+bH-10);ctx.lineTo(bX+bW,bY+bH);ctx.closePath();ctx.fill();
+    ctx.fillStyle=roofColor;
+    ctx.beginPath();ctx.moveTo(bX,bY);ctx.lineTo(bX+bW/2,bY-50);ctx.lineTo(bX+bW,bY);ctx.closePath();ctx.fill();
+    ctx.fillRect(bX,bY-18,bW,18);
+    ctx.fillStyle=roofShade;
+    ctx.beginPath();ctx.moveTo(bX+bW,bY-18);ctx.lineTo(bX+bW+depth,bY-6);ctx.lineTo(bX+bW+depth,bY+6);ctx.lineTo(bX+bW,bY-6);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(bX,bY-18);ctx.lineTo(bX-depth,bY-6);ctx.lineTo(bX-depth,bY+6);ctx.lineTo(bX,bY-6);ctx.closePath();ctx.fill();
+    // windows
+    ctx.fillStyle='#f0f7ff'; ctx.strokeStyle='#b43d3d'; ctx.lineWidth=2;
+    const cols=5, rows=3, padX=20, padY=40, winW=34, winH=28, gapX=(bW-padX*2-cols*winW)/(cols-1), gapY=22;
+    for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+            const wx=bX+padX+c*(winW+gapX), wy=bY+padY+r*(winH+gapY);
+            ctx.fillRect(wx,wy,winW,winH);
+            ctx.strokeRect(wx,wy,winW,winH);
+            ctx.strokeRect(wx+winW/2-1, wy, 2, winH);
+            ctx.strokeRect(wx, wy+winH/2-1, winW, 2);
+        }
+    }
+    // door
+    door.x = canvas.width*0.5;
+    door.y = bY + bH - door.h/2 - 8;
+    drawDoor();
+    // sign
+    const signW=145, signH=18;
+    const signX = canvas.width*0.5 - signW/2;
+    const signY = bY + 8;
+    ctx.fillStyle = '#f4ebeb';
+    ctx.fillRect(signX, signY, signW, signH);
+    ctx.strokeStyle = '#a43a3a'; ctx.lineWidth=2; ctx.strokeRect(signX, signY, signW, signH);
+    ctx.fillStyle = '#1e1e1e'; ctx.font = '7px "Press Start 2P", cursive'; ctx.textBaseline='middle'; ctx.textAlign='center';
+    ctx.fillText('Mirlow High School', signX+signW/2, signY+signH/2);
+}
+
+function drawDoor() {
+    ctx.save();
+    ctx.translate(door.x, door.y);
+    ctx.fillStyle = '#a57c52';
+    ctx.fillRect(-door.w/2, -door.h/2, door.w, door.h);
+    ctx.fillStyle = '#8b623c';
+    ctx.fillRect(-door.w/2+3, -door.h/2+3, door.w-6, door.h-8);
+    ctx.fillStyle = '#d9c7a7';
+    ctx.beginPath();ctx.arc(door.w/2-6, 0, 3, 0, Math.PI*2);ctx.fill();
+    ctx.restore();
+}
+
+function loop(now) {
+    const dt = Math.min((now-lastTime)/1000, 0.05);
+    lastTime = now;
+    let vx=0, vy=0;
+    if (!dialogActive && !loading) {
+        if (keysDown.has('w')||keysDown.has('arrowup')) vy -= 1;
+        if (keysDown.has('s')||keysDown.has('arrowdown')) vy += 1;
+        if (keysDown.has('a')||keysDown.has('arrowleft')) vx -= 1;
+        if (keysDown.has('d')||keysDown.has('arrowright')) vx += 1;
+    }
+    const mag = Math.hypot(vx,vy) || 1;
+    vx = (vx/mag)*hero.speed*dt;
+    vy = (vy/mag)*hero.speed*dt;
+    const nx = hero.x + vx;
+    const ny = hero.y + vy;
+    const pad = hero.size/2;
+    const block = (x,y)=> inSchool ? false : blocked(x,y);
+    if (!block(nx-pad, hero.y) && !block(nx+pad, hero.y)) hero.x = nx;
+    if (!block(hero.x, ny-pad) && !block(hero.x, ny+pad)) hero.y = ny;
+
+    const moving = vx !== 0 || vy !== 0;
+    if (moving) {
+        hero.frameTimer += dt * 8;
+        if (hero.frameTimer > 1) {
+            hero.frame = 1 - hero.frame;
+            hero.frameTimer = 0;
+        }
+    } else {
+        hero.frame = 0;
+        hero.frameTimer = 0;
+    }
+
+    if (!inSchool) {
+        const fx1 = npc.x - 24, fx2 = npc.x + 24, fy1 = npc.y - 10, fy2 = npc.y + 40;
+        const inFront = hero.x > fx1 && hero.x < fx2 && hero.y > fy1 && hero.y < fy2;
+        if (inFront && !dialogActive && !portalVisible) {
+            dialogStep = 0;
+            showDialog(npcDialog[0]);
+        }
+    }
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (!inSchool) {
+        drawField();
+        drawNPC();
+        drawPortal();
+    } else {
+        drawSchool();
+    }
+    drawHero();
+
+    // portal collide
+    if (portalPos && !inSchool && !loading) {
+        const dx = hero.x - portalPos.x;
+        const dy = hero.y - portalPos.y;
+        const inside = (dx*dx)/(portalPos.rx*portalPos.rx) + (dy*dy)/(portalPos.ry*portalPos.ry) <= 1;
+        if (inside) {
+            loading = true;
+            if (loadingOverlay) loadingOverlay.hidden = false;
+            showDialog('...', true);
+            setTimeout(() => {
+                if (loadingOverlay) loadingOverlay.hidden = true;
+                hideDialog();
+                inSchool = true;
+                hero.x = tile*2;
+                hero.y = canvas.height - tile*2;
+                loading = false;
+            }, 800);
+        }
+    }
+
+    // door message
+    if (inSchool && !dialogActive) {
+        const padX=6, padY=6;
+        const withinX = hero.x > door.x - door.w/2 - padX && hero.x < door.x + door.w/2 + padX;
+        const withinY = hero.y > door.y - door.h/2 - padY && hero.y < door.y + door.h/2 + padY;
+        if (withinX && withinY && !doorCooldown) {
+            doorCooldown = true;
+            showDialog('This door is locked.', true);
+        }
+        if (!withinX || !withinY) doorCooldown = false;
+    }
+
+    requestAnimationFrame(loop);
+}
