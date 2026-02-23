@@ -16,7 +16,7 @@
     <main class="game">
         <section class="slide slide--auth is-active" id="login-slide" aria-hidden="false">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
             </header>
             <div class="slide__content slide__content--narrow">
@@ -41,7 +41,7 @@
 
         <section class="slide slide--auth" id="signup-slide" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
             </header>
             <div class="slide__content slide__content--narrow">
@@ -70,7 +70,7 @@
 
         <section class="slide slide--intro" id="intro-slide" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -95,7 +95,7 @@
 
         <section class="slide slide--world" id="world-slide" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -113,6 +113,28 @@
                         <div class="loading-spinner" aria-hidden="true"></div>
                         <p>Loading...</p>
                     </div>
+                    <div class="guide-popup" id="guide-popup" hidden>
+                        <div class="guide-popup__body">
+                            <div class="guide-popup__face" aria-hidden="true"></div>
+                            <div class="guide-popup__content">
+                                <h3>The Guide Master</h3>
+                                <p id="guide-popup-line"></p>
+                                <div class="guide-popup__actions">
+                                    <button class="btn btn--accent btn--small" id="guide-popup-next" type="button">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="guide-avatar" id="guide-avatar" type="button" aria-label="Open quests" hidden>
+                        <span class="guide-avatar__face"></span>
+                    </button>
+                    <div class="guide-quests" id="guide-quests" hidden>
+                        <div class="guide-quests__header">
+                            <span>Quests</span>
+                            <button class="guide-quests__close" id="guide-quests-close" aria-label="Close quests">✕</button>
+                        </div>
+                        <p class="guide-quests__empty">No Quests</p>
+                    </div>
                 </div>
                 <button class="btn btn--secondary" data-target="intro-slide" aria-label="Back to Home Screen">Back to Home</button>
             </div>
@@ -122,7 +144,7 @@
         </section>
         <section class="slide slide--home" id="home-world" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -138,7 +160,7 @@
         </section>
         <section class="slide slide--friendship" id="friendship-world" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -154,7 +176,7 @@
         </section>
         <section class="slide slide--school" id="school-world" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -170,7 +192,7 @@
         </section>
         <section class="slide slide--dream" id="dream-world" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -186,7 +208,7 @@
         </section>
         <section class="slide slide--goals" id="personal-goals" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <div class="slide__actions">
                     <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
@@ -217,7 +239,7 @@
         </section>
         <section class="slide slide--achievements" id="achievements" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>
@@ -234,7 +256,7 @@
         </section>
         <section class="slide slide--journal" id="journal-entries" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <div class="slide__actions">
                     <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
@@ -266,7 +288,7 @@
         </section>
         <section class="slide slide--checkin" id="daily-checkin" aria-hidden="true">
             <header class="slide__header">
-                <img class="logo" src="MHISA Logo Transparent.png"
+                <img class="logo" src="images/MHISA Logo Transparent.png"
                     alt="MHISA - Mental Health Initiative for South Asians" />
                 <button class="btn btn--secondary btn--accent btn--small" data-logout aria-label="Log out">Log out</button>
             </header>

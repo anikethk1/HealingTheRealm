@@ -3,6 +3,13 @@ const toast = document.getElementById('toast');
 let toastTimer = null;
 let authUser = localStorage.getItem('authUser') || null;
 const fullscreenBtn = document.getElementById('fullscreen-toggle');
+const guidePopup = document.getElementById('guide-popup');
+const guidePopupClose = document.getElementById('guide-popup-close');
+const guideAvatar = document.getElementById('guide-avatar');
+const guideQuests = document.getElementById('guide-quests');
+const guideQuestsClose = document.getElementById('guide-quests-close');
+const guidePopupNext = document.getElementById('guide-popup-next');
+const guidePopupLine = document.getElementById('guide-popup-line');
 
 // Toast helper
 function showToast(message, type = 'success', duration = 2200) {
@@ -457,6 +464,21 @@ let portalPos = null;
 let schoolRect = null;
 const door = { x: 0, y: 0, w: 34, h: 48 };
 let doorCooldown = false;
+let guidePopupVisible = false;
+let guideQuestsVisible = false;
+let guideIntroShown = false;
+let guideWalkTime = 0;
+let guideLineIdx = 0;
+let guideLineComplete = false;
+let guideTypeTimer = null;
+let guidePopupTimer = null;
+const guideLines = [
+    'Oh hey there!',
+    "I'm the Guide Master, your guide through your first mental health journey here at Mirlow High School!",
+    'During your time here at Mirlow, you will have to complete quests to complete this story, make sure to talk to the characters in the rooms and areas you\'re in, walk around and explore the map, you might find some hidden secrets :).',
+    'Once you\'re done reading this message, you can click on my face at the top left of your screen and all your current quests can be seen!',
+    'Start your journey by talking to the girl in front of your high school. Good luck!'
+];
 
 function initFieldPalette() {
     colors = fieldMap.map(row => row.map(() => (Math.random() > 0.5 ? '#84d58a' : '#7ccf82')));
@@ -523,6 +545,12 @@ function startWorldDemo() {
     portalVisible = false;
     inSchool = false;
     doorCooldown = false;
+    guidePopupVisible = false;
+    guideQuestsVisible = false;
+    guideIntroShown = false;
+    guideWalkTime = 0;
+    guideLineIdx = 0;
+    guideLineComplete = false;
     keysDown.clear();
     lastTime = performance.now();
 
@@ -565,14 +593,14 @@ function handleDialogNext() {
 function handleKeyDown(e) {
     const k = e.key.toLowerCase();
     if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
-        if (dialogActive || loading) {
+        if (dialogActive || loading || guidePopupVisible || guideQuestsVisible) {
             e.preventDefault();
             return;
         }
         keysDown.add(k);
         e.preventDefault();
     }
-    if (dialogActive && ['enter',' '].includes(k)) {
+    if ((dialogActive || guidePopupVisible) && ['enter',' '].includes(k)) {
         e.preventDefault();
         if (!dialogComplete) finishDialog(); else hideDialog();
     }
@@ -756,11 +784,81 @@ function drawDoor() {
     ctx.restore();
 }
 
+// Guide UI helpers
+guidePopupClose?.addEventListener('click', () => {
+    guidePopupVisible = false;
+    if (guidePopup) guidePopup.hidden = true;
+});
+
+guideAvatar?.addEventListener('click', () => {
+    if (!inSchool) return;
+    guideQuestsVisible = true;
+    if (guideQuests) guideQuests.hidden = false;
+});
+guideQuestsClose?.addEventListener('click', () => {
+    guideQuestsVisible = false;
+    if (guideQuests) guideQuests.hidden = true;
+});
+
+// Guide popup typewriter
+function clearGuideTimer() {
+    if (guideTypeTimer) clearInterval(guideTypeTimer);
+    guideTypeTimer = null;
+}
+function showGuidePopup() {
+    guidePopupVisible = true;
+    guideLineIdx = 0;
+    guideLineComplete = false;
+    guideWalkTime = 0;
+    clearGuideTimer();
+    if (guidePopup) guidePopup.hidden = false;
+    typeGuideLine();
+}
+function typeGuideLine() {
+    if (!guidePopupLine) return;
+    clearGuideTimer();
+    guideLineComplete = false;
+    guidePopupLine.textContent = '';
+    const text = guideLines[guideLineIdx] || '';
+    let i = 0;
+    guideTypeTimer = setInterval(() => {
+        guidePopupLine.textContent = text.slice(0, ++i);
+        if (i >= text.length) {
+            guideLineComplete = true;
+            clearGuideTimer();
+        }
+    }, 22);
+}
+function finishGuideLine() {
+    if (!guidePopupLine) return;
+    guidePopupLine.textContent = guideLines[guideLineIdx] || '';
+    guideLineComplete = true;
+    clearGuideTimer();
+}
+
+guidePopupNext?.addEventListener('click', () => {
+    if (!guidePopupVisible) return;
+    if (!guideLineComplete) {
+        finishGuideLine();
+        return;
+    }
+    if (guideLineIdx < guideLines.length - 1) {
+        guideLineIdx += 1;
+        typeGuideLine();
+        return;
+    }
+    // done
+    guidePopupVisible = false;
+    guideIntroShown = true;
+    clearGuideTimer();
+    if (guidePopup) guidePopup.hidden = true;
+});
+
 function loop(now) {
     const dt = Math.min((now-lastTime)/1000, 0.05);
     lastTime = now;
     let vx=0, vy=0;
-    if (!dialogActive && !loading) {
+    if (!dialogActive && !loading && !guidePopupVisible && !guideQuestsVisible) {
         if (keysDown.has('w')||keysDown.has('arrowup')) vy -= 1;
         if (keysDown.has('s')||keysDown.has('arrowdown')) vy += 1;
         if (keysDown.has('a')||keysDown.has('arrowleft')) vx -= 1;
@@ -799,6 +897,18 @@ function loop(now) {
             dialogStep = 0;
             showDialog(npcDialog[0]);
         }
+    } else {
+        // Track movement time in school to trigger Guide popup
+        const moving = Math.abs(vx) + Math.abs(vy) > 0.01;
+        if (!guideIntroShown && !guidePopupVisible && moving) {
+            guideWalkTime += dt;
+            if (guideWalkTime >= 2) {
+                guideIntroShown = true;
+                guidePopupVisible = true;
+                if (guidePopup) guidePopup.hidden = false;
+                typeGuideList();
+            }
+        }
     }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -827,12 +937,21 @@ function loop(now) {
                 hero.x = tile*2;
                 hero.y = canvas.height - tile*2;
                 loading = false;
+                guidePopupVisible = false;
+                guideIntroShown = false;
+                guideWalkTime = 0;
+                guideLineIdx = 0;
+                guideLineComplete = false;
+                guidePopupTimer = setTimeout(() => {
+                    if (!guideIntroShown) showGuidePopup();
+                }, 2000);
+                if (guideAvatar) guideAvatar.hidden = false;
             }, 800);
         }
     }
 
     // door message
-    if (inSchool && !dialogActive) {
+    if (inSchool && !dialogActive && !guidePopupVisible && !guideQuestsVisible) {
         const padX=6, padY=6;
         const withinX = hero.x > door.x - door.w/2 - padX && hero.x < door.x + door.w/2 + padX;
         const withinY = hero.y > door.y - door.h/2 - padY && hero.y < door.y + door.h/2 + padY;

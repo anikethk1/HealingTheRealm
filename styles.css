@@ -455,6 +455,115 @@ body {
     border-top-color: #fff;
     animation: spin 0.9s linear infinite;
 }
+.guide-popup {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    padding: 1rem;
+    z-index: 5;
+}
+.guide-popup[hidden] { display: none !important; }
+.guide-popup__body {
+    position: relative;
+    background: #1e1e24;
+    color: #f6f6f6;
+    border: 2px solid #ffffff55;
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem 1.1rem 1.4rem;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    width: min(92vw, 720px);
+}
+.guide-popup__content {
+    display: grid;
+    gap: 0.9rem;
+}
+.guide-popup__body h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    letter-spacing: 0.12em;
+    font-size: 1.1rem;
+}
+.guide-popup__body p {
+    margin: 0;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+}
+.guide-popup__face {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #2c2f3a url('images/player_idle.png') center/cover no-repeat;
+    border: 3px solid #f6f6f6;
+    box-shadow: 0 12px 26px rgba(0,0,0,0.45);
+}
+.guide-popup__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+.guide-avatar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 3px solid #f4ebeb;
+    background: #2c2f3a url('images/player_idle.png') center/cover no-repeat;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    z-index: 4;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+}
+.guide-avatar[hidden] { display: none !important; }
+.guide-avatar__face { pointer-events: none; }
+.guide-quests {
+    position: absolute;
+    top: 70px;
+    left: 14px;
+    width: 260px;
+    background: #1f1f26;
+    color: #f6f6f6;
+    border: 2px solid #ffffff55;
+    border-radius: 12px;
+    padding: 0.75rem;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    z-index: 4;
+}
+.guide-quests[hidden] { display: none !important; }
+.guide-quests__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-display);
+    letter-spacing: 0.08em;
+}
+.guide-quests__close {
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.guide-quests__empty {
+    margin: 0;
+    font-family: var(--font-display);
+    letter-spacing: 0.08em;
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
@@ -523,6 +632,7 @@ body {
     outline: none;
     transform: translateY(0);
     transition: transform 0.18s ease;
+    z-index: 6; /* stay clickable even when popup overlays */
 }
 .fullscreen-btn:hover,
 .fullscreen-btn:focus-visible {
@@ -652,12 +762,12 @@ body {
 
 .slide--goals {
     background: var(--bg-overlay),
-        url('Goals.jpg') center/cover no-repeat fixed; /* Personal goals */
+        url('images/Goals.jpg') center/cover no-repeat fixed; /* Personal goals */
 }
 
 .slide--achievements {
     background: var(--bg-overlay),
-        url('winner.png') center/cover no-repeat fixed; /* Local celebratory winner */
+        url('images/Winner.png') center/cover no-repeat fixed; /* Local celebratory winner */
 }
 
 .slide--journal {
@@ -667,7 +777,7 @@ body {
 
 .slide--checkin {
     background: var(--bg-overlay),
-        url('Smiling.jpg') center/cover no-repeat fixed; /* Smiling friends */
+        url('images/Smiling.jpg') center/cover no-repeat fixed; /* Smiling friends */
 }
 
 @media (max-width: 768px) {
