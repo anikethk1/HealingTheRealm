@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -104,7 +104,7 @@
                 <div class="playfield">
                     <canvas id="game-canvas" width="640" height="480" role="img"
                         aria-label="Top-down map with grass, trees, and a tiny trainer sprite"></canvas>
-                    <button class="btn btn--secondary btn--accent btn--small fullscreen-btn" id="fullscreen-toggle" type="button" aria-label="Enter fullscreen">⛶</button>
+                    <button class="btn btn--secondary btn--accent btn--small fullscreen-btn" id="fullscreen-toggle" type="button" aria-label="Enter fullscreen">â›¶</button>
                     <div class="dialog-box" id="dialog-box" hidden>
                         <p class="dialog-text" id="dialog-text" aria-live="polite"></p>
                         <button class="dialog-next" id="dialog-next" type="button" aria-label="Next">|&gt;</button>
@@ -127,11 +127,12 @@
                     </div>
                     <button class="guide-avatar" id="guide-avatar" type="button" aria-label="Open quests" hidden>
                         <span class="guide-avatar__face"></span>
+                        <span class="guide-avatar__alert" id="guide-avatar-alert" hidden>!</span>
                     </button>
                     <div class="guide-quests" id="guide-quests" hidden>
                         <div class="guide-quests__header">
                             <span>Quests</span>
-                            <button class="guide-quests__close" id="guide-quests-close" aria-label="Close quests">✕</button>
+                            <button class="guide-quests__close" id="guide-quests-close" aria-label="Close quests">âœ•</button>
                         </div>
                         <p class="guide-quests__empty">No Quests</p>
                     </div>
@@ -340,5 +341,6 @@
 </body>
 
 </html>
+
 
 

@@ -10,6 +10,7 @@ const guideQuests = document.getElementById('guide-quests');
 const guideQuestsClose = document.getElementById('guide-quests-close');
 const guidePopupNext = document.getElementById('guide-popup-next');
 const guidePopupLine = document.getElementById('guide-popup-line');
+const guideAvatarAlert = document.getElementById('guide-avatar-alert');
 
 // Toast helper
 function showToast(message, type = 'success', duration = 2200) {
@@ -38,7 +39,7 @@ function setAuthUser(username) {
 function showSlide(id) {
     const next = document.getElementById(id);
     if (!next) return;
-    const publicSlides = new Set(['login-slide', 'signup-slide']);
+    const publicSlides = new Set(['login-slide', 'signup-slide', 'world-slide']);
     if (!isAuthenticated() && !publicSlides.has(id)) {
         return showSlide('login-slide');
     }
@@ -389,12 +390,9 @@ if (checkinForm) {
 // Initial slide on load
 window.addEventListener('DOMContentLoaded', () => {
     const initialFromHash = location.hash ? location.hash.slice(1) : null;
-    const initial = isAuthenticated() ? (initialFromHash || 'intro-slide') : 'login-slide';
-    navigateTo(initial, false);
-    if (isAuthenticated()) {
-        loadGoals();
-        loadCheckin();
-    }
+    // Always drop into the world slide for a fresh NPC scene
+    navigateTo('world-slide', false);
+    startWorldDemo();
 });
 
 // Fullscreen toggle
@@ -472,12 +470,28 @@ let guideLineIdx = 0;
 let guideLineComplete = false;
 let guideTypeTimer = null;
 let guidePopupTimer = null;
+let newQuest = null;
+let newQuestAlert = false;
+let inGrey = false;
+const girl = { x: 0, y: 0, visible: true, talked: false };
+let doorLocked = true;
+let girlWalking = false;
+let playerFrozen = false;
+let meetingNPCs = [];
+let meetingObstacles = [];
+let activeLines = [];
+let activeFace = 'images/player_idle.png';
 const guideLines = [
-    'Oh hey there!',
+    'Oh, hey there!',
     "I'm the Guide Master, your guide through your first mental health journey here at Mirlow High School!",
     'During your time here at Mirlow, you will have to complete quests to complete this story, make sure to talk to the characters in the rooms and areas you\'re in, walk around and explore the map, you might find some hidden secrets :).',
     'Once you\'re done reading this message, you can click on my face at the top left of your screen and all your current quests can be seen!',
     'Start your journey by talking to the girl in front of your high school. Good luck!'
+];
+const girlLines = [
+    'Hello! Thank you so much for joining the Student Advisory Committee of Mirlow High.',
+    'We have a meeting today about the upcoming cultural festival that is being held at the school.',
+    'Let\'s go! They are waiting for us, come with me into school!'
 ];
 
 function initFieldPalette() {
@@ -528,7 +542,6 @@ function hideDialog() {
 }
 
 function startWorldDemo() {
-    if (worldBooted) return;
     worldBooted = true;
     canvas = document.getElementById('game-canvas');
     if (!canvas) return;
@@ -551,6 +564,24 @@ function startWorldDemo() {
     guideWalkTime = 0;
     guideLineIdx = 0;
     guideLineComplete = false;
+    newQuest = null;
+    newQuestAlert = false;
+    if (guideAvatarAlert) guideAvatarAlert.hidden = true;
+    doorLocked = true;
+    inGrey = false;
+    girl.visible = true;
+    girl.talked = false;
+    girlWalking = false;
+    playerFrozen = false;
+    // place girl to the right/front of door
+    // place girl in front-right of the school
+    girl.x = door.x + 110;
+    girl.y = door.y + 20;
+    girlWalking = false;
+    playerFrozen = false;
+    activeLines = guideLines;
+    activeFace = 'images/player_idle.png';
+    clearGuideTimer();
     keysDown.clear();
     lastTime = performance.now();
 
@@ -574,14 +605,17 @@ function handleDialogNext() {
     }
 
     // NPC 3-line sequence
-    if (dialogStep < npcDialog.length - 1) {
+    if (!portalVisible && dialogStep < npcDialog.length - 1) {
         dialogStep += 1;
         showDialog(npcDialog[dialogStep]);
         return;
     }
     // Finished the last line: reveal portal and close dialog
-    if (dialogStep === npcDialog.length - 1) {
+    if (!portalVisible && dialogStep === npcDialog.length - 1) {
         portalVisible = true;
+        newQuest = 'Talk to the girl in front of Mirlow High School.';
+        newQuestAlert = true;
+        if (guideAvatarAlert) guideAvatarAlert.hidden = false;
         hideDialog();
         return;
     }
@@ -610,6 +644,7 @@ function handleKeyUp(e) {
 }
 
 function blocked(x, y) {
+    if (inGrey) return meetingBlocked(x, y);
     if (inSchool && schoolRect) {
         const inside = x > schoolRect.x1 && x < schoolRect.x2 && y > schoolRect.y1 && y < schoolRect.y2;
         if (!inside) return false;
@@ -620,12 +655,87 @@ function blocked(x, y) {
         const dx2 = door.x + doorwayWidth / 2;
         const dy1 = door.y - door.h / 2 - 4; // just below the door top
         const dy2 = schoolRect.y2 + 20;      // extend to ground
-        const inDoorway = x > dx1 && x < dx2 && y > dy1 && y < dy2;
+    const inDoorway = x > dx1 && x < dx2 && y > dy1 && y < dy2;
         return !inDoorway; // block everywhere except doorway
     }
     const col = Math.floor(x / tile);
     const row = Math.floor(y / tile);
     return fieldMap[row]?.[col] === 1;
+}
+
+function meetingBlocked(x, y) {
+    // Boundaries
+    const margin = 12;
+    if (x < margin || x > canvas.width - margin || y < margin || y > canvas.height - margin) return true;
+    // Tables / furniture
+    for (const r of meetingObstacles) {
+        if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true;
+    }
+    return false;
+}
+
+function initMeetingRoom() {
+    meetingObstacles = [];
+    meetingNPCs = [];
+
+    // Player start point inside meeting room
+    hero.x = canvas.width * 0.5;
+    hero.y = canvas.height - 36;
+
+    // U-table layout
+    const tY = 80, tH = 18;
+    meetingObstacles.push({ x: 70, y: tY, w: canvas.width - 140, h: tH });           // top bar
+    meetingObstacles.push({ x: 70, y: tY, w: 18, h: 130 });                           // left bar
+    meetingObstacles.push({ x: canvas.width - 88, y: tY, w: 18, h: 130 });            // right bar
+    meetingObstacles.push({ x: 120, y: tY + 110, w: canvas.width - 240, h: tH });     // bottom bar
+
+    // Teacher desk on right
+    const desk = { x: canvas.width - 130, y: canvas.height * 0.38, w: 70, h: 26 };
+    meetingObstacles.push(desk);
+
+    // Cabinets on left wall
+    meetingObstacles.push({ x: 16, y: 50, w: 46, h: 30 });
+    meetingObstacles.push({ x: 16, y: canvas.height - 80, w: 46, h: 30 });
+
+    // NPC placements: teacher + 4 students
+    meetingNPCs.push({ x: desk.x + desk.w / 2, y: desk.y - 12, color: '#3a6de0' }); // teacher
+    meetingNPCs.push({ x: 120, y: tY + 26, color: '#d45c5c' });                      // top row
+    meetingNPCs.push({ x: canvas.width - 120, y: tY + 26, color: '#3aa76d' });
+    meetingNPCs.push({ x: 110, y: tY + 118, color: '#d9a93f' });                     // bottom row
+    meetingNPCs.push({ x: canvas.width - 110, y: tY + 118, color: '#5c6bc0' });
+}
+
+function drawMeetingRoom() {
+    // Wood floor
+    ctx.fillStyle = '#cfa876';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Light planks overlay
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    for (let i = 0; i < 18; i++) {
+        const y = i * 20 + (i % 2 === 0 ? 4 : 10);
+        ctx.fillRect(0, y, canvas.width, 6);
+    }
+
+    ctx.fillStyle = '#ffffff';
+    meetingObstacles.forEach(r => {
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+    });
+
+    // Simple NPCs (teacher + students)
+    meetingNPCs.forEach(npc => {
+        ctx.save();
+        ctx.translate(npc.x, npc.y);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 18, 10, 4, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = npc.color; ctx.fillRect(-8, -8, 16, 16);
+        ctx.fillStyle = '#f1d5b0'; ctx.fillRect(-7, -2, 14, 10);
+        ctx.fillStyle = '#1c1c1c'; ctx.fillRect(-4, 0, 2, 2); ctx.fillRect(2, 0, 2, 2);
+        ctx.fillStyle = '#2d2d2d'; ctx.fillRect(-8, 8, 16, 12);
+        ctx.restore();
+    });
+
+    // Draw hero last in room
+    drawHero();
 }
 
 function drawField() {
@@ -770,6 +880,26 @@ function drawSchool() {
     ctx.strokeStyle = '#a43a3a'; ctx.lineWidth=2; ctx.strokeRect(signX, signY, signW, signH);
     ctx.fillStyle = '#1e1e1e'; ctx.font = '7px "Press Start 2P", cursive'; ctx.textBaseline='middle'; ctx.textAlign='center';
     ctx.fillText('Mirlow High School', signX+signW/2, signY+signH/2);
+
+    // Position girl in front-right of the school if she hasn't walked away
+    if (!girl.talked && !girlWalking) {
+        girl.x = door.x + (bW * 0.28); // move right of door
+        girl.y = bY + bH + 12;          // slightly in front
+    }
+
+    // Girl NPC to the right of the door
+    if (girl.visible) {
+        ctx.save();
+        ctx.translate(girl.x, girl.y);
+        // simple shadow + body
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0,18,10,4,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#222'; ctx.fillRect(-8, -8, 16, 16); // hair/hat black
+        ctx.fillStyle = '#f1d5b0'; ctx.fillRect(-7, -2, 14, 10); // face
+        ctx.fillStyle = '#1c1c1c'; ctx.fillRect(-4, 0, 2, 2); ctx.fillRect(2, 0, 2, 2); // eyes
+        ctx.fillStyle = '#3aa76d'; ctx.fillRect(-8, 8, 16, 12); // shirt green
+        ctx.fillStyle = '#2d2d2d'; ctx.fillRect(-8, 20, 6, 10); ctx.fillRect(2, 20, 6, 10); // legs
+        ctx.restore();
+    }
 }
 
 function drawDoor() {
@@ -784,6 +914,16 @@ function drawDoor() {
     ctx.restore();
 }
 
+function renderQuests() {
+    if (!guideQuests) return;
+    const empty = guideQuests.querySelector('.guide-quests__empty');
+    if (!newQuest) {
+        if (empty) empty.textContent = 'No Quests';
+        return;
+    }
+    if (empty) empty.textContent = newQuest;
+}
+
 // Guide UI helpers
 guidePopupClose?.addEventListener('click', () => {
     guidePopupVisible = false;
@@ -794,6 +934,9 @@ guideAvatar?.addEventListener('click', () => {
     if (!inSchool) return;
     guideQuestsVisible = true;
     if (guideQuests) guideQuests.hidden = false;
+    if (guideAvatarAlert) guideAvatarAlert.hidden = true;
+    newQuestAlert = false;
+    renderQuests();
 });
 guideQuestsClose?.addEventListener('click', () => {
     guideQuestsVisible = false;
@@ -807,11 +950,15 @@ function clearGuideTimer() {
 }
 function showGuidePopup() {
     guidePopupVisible = true;
+    activeLines = guideLines;
+    activeFace = 'images/player_idle.png';
     guideLineIdx = 0;
     guideLineComplete = false;
     guideWalkTime = 0;
     clearGuideTimer();
     if (guidePopup) guidePopup.hidden = false;
+    if (guidePopupLine) guidePopupLine.textContent = '';
+    setGuideFace(activeFace);
     typeGuideLine();
 }
 function typeGuideLine() {
@@ -819,7 +966,7 @@ function typeGuideLine() {
     clearGuideTimer();
     guideLineComplete = false;
     guidePopupLine.textContent = '';
-    const text = guideLines[guideLineIdx] || '';
+    const text = activeLines[guideLineIdx] || '';
     let i = 0;
     guideTypeTimer = setInterval(() => {
         guidePopupLine.textContent = text.slice(0, ++i);
@@ -831,7 +978,7 @@ function typeGuideLine() {
 }
 function finishGuideLine() {
     if (!guidePopupLine) return;
-    guidePopupLine.textContent = guideLines[guideLineIdx] || '';
+    guidePopupLine.textContent = activeLines[guideLineIdx] || '';
     guideLineComplete = true;
     clearGuideTimer();
 }
@@ -842,23 +989,35 @@ guidePopupNext?.addEventListener('click', () => {
         finishGuideLine();
         return;
     }
-    if (guideLineIdx < guideLines.length - 1) {
+    if (guideLineIdx < activeLines.length - 1) {
         guideLineIdx += 1;
         typeGuideLine();
         return;
     }
     // done
     guidePopupVisible = false;
-    guideIntroShown = true;
     clearGuideTimer();
     if (guidePopup) guidePopup.hidden = true;
+    if (activeLines === girlLines) {
+        girl.talked = true;
+        girlWalking = true;
+        playerFrozen = true;
+    } else {
+        guideIntroShown = true;
+        if (!newQuest) {
+            newQuest = 'Talk to the girl in front of Mirlow High School.';
+            newQuestAlert = true;
+            if (guideAvatarAlert) guideAvatarAlert.hidden = false;
+            renderQuests();
+        }
+    }
 });
 
 function loop(now) {
     const dt = Math.min((now-lastTime)/1000, 0.05);
     lastTime = now;
     let vx=0, vy=0;
-    if (!dialogActive && !loading && !guidePopupVisible && !guideQuestsVisible) {
+    if (!dialogActive && !loading && !guidePopupVisible && !guideQuestsVisible && !girlWalking && !playerFrozen) {
         if (keysDown.has('w')||keysDown.has('arrowup')) vy -= 1;
         if (keysDown.has('s')||keysDown.has('arrowdown')) vy += 1;
         if (keysDown.has('a')||keysDown.has('arrowleft')) vx -= 1;
@@ -874,7 +1033,7 @@ function loop(now) {
     if (!block(nx-pad, hero.y) && !block(nx+pad, hero.y)) hero.x = nx;
     if (!block(hero.x, ny-pad) && !block(hero.x, ny+pad)) hero.y = ny;
 
-    const moving = vx !== 0 || vy !== 0;
+    const moving = (vx !== 0 || vy !== 0) && !playerFrozen;
     if (moving) {
         hero.frameTimer += dt * 8;
         if (hero.frameTimer > 1) {
@@ -898,15 +1057,40 @@ function loop(now) {
             showDialog(npcDialog[0]);
         }
     } else {
-        // Track movement time in school to trigger Guide popup
-        const moving = Math.abs(vx) + Math.abs(vy) > 0.01;
-        if (!guideIntroShown && !guidePopupVisible && moving) {
-            guideWalkTime += dt;
-            if (guideWalkTime >= 2) {
-                guideIntroShown = true;
+        // Girl interaction in school
+        if (girl.visible && !girl.talked && !girlWalking && !dialogActive && !guidePopupVisible) {
+            const gx1 = girl.x - 30, gx2 = girl.x + 30;
+            const gy1 = girl.y - 10, gy2 = girl.y + 32;
+            const nearGirl = hero.x > gx1 && hero.x < gx2 && hero.y > gy1 && hero.y < gy2;
+            if (nearGirl) {
+                const titleEl = document.querySelector('#guide-popup h3');
+                if (titleEl) titleEl.textContent = 'Eshal';
+                activeLines = girlLines;
+                activeFace = 'images/player_idle.png';
                 guidePopupVisible = true;
                 if (guidePopup) guidePopup.hidden = false;
-                typeGuideList();
+                guideLineIdx = 0;
+                guideLineComplete = false;
+                setGuideFace('images/character_femaleperson_idle.png');
+                typeGuideLine();
+            }
+        }
+        // Girl walking into door
+        if (girlWalking) {
+            const speed = 80 * dt;
+            const dx = door.x - girl.x;
+            const dy = (door.y + door.h/2) - girl.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 2) {
+                girlWalking = false;
+                girl.visible = false;
+                doorLocked = false;
+                playerFrozen = false;
+            } else {
+                const nxg = girl.x + (dx/dist) * speed;
+                const nyg = girl.y + (dy/dist) * speed;
+                girl.x = nxg;
+                girl.y = nyg;
             }
         }
     }
@@ -915,11 +1099,17 @@ function loop(now) {
     if (!inSchool) {
         drawField();
         drawNPC();
+        // Girl only drawn in school scene
         drawPortal();
     } else {
         drawSchool();
     }
     drawHero();
+
+    // Grey screen (meeting room) scene after entering building
+    if (inGrey) {
+        drawMeetingRoom();
+    }
 
     // portal collide
     if (portalPos && !inSchool && !loading) {
@@ -946,21 +1136,44 @@ function loop(now) {
                     if (!guideIntroShown) showGuidePopup();
                 }, 2000);
                 if (guideAvatar) guideAvatar.hidden = false;
+                // position girl near door (to the right)
+                girl.x = door.x + 70;
+                girl.y = door.y + door.h/2 - 10;
             }, 800);
         }
     }
 
-    // door message
+    // door interaction (locked/unlocked)
     if (inSchool && !dialogActive && !guidePopupVisible && !guideQuestsVisible) {
         const padX=6, padY=6;
         const withinX = hero.x > door.x - door.w/2 - padX && hero.x < door.x + door.w/2 + padX;
         const withinY = hero.y > door.y - door.h/2 - padY && hero.y < door.y + door.h/2 + padY;
         if (withinX && withinY && !doorCooldown) {
             doorCooldown = true;
-            showDialog('This door is locked.', true);
+            if (doorLocked) {
+                showDialog('This door is locked.', true);
+            } else {
+                // enter building
+                loading = true;
+                if (loadingOverlay) loadingOverlay.hidden = false;
+                setTimeout(() => {
+                    if (loadingOverlay) loadingOverlay.hidden = true;
+                    inGrey = true;
+                    inSchool = false;
+                    hideDialog();
+                    initMeetingRoom();
+                    loading = false;
+                }, 800);
+            }
         }
         if (!withinX || !withinY) doorCooldown = false;
     }
 
     requestAnimationFrame(loop);
+}
+function setGuideFace(url) {
+    if (guidePopup) {
+        const face = guidePopup.querySelector('.guide-popup__face');
+        if (face) face.style.background = `#2c2f3a url('${url}') center/cover no-repeat`;
+    }
 }

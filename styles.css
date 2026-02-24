@@ -497,8 +497,8 @@ body {
     position: absolute;
     top: -10px;
     left: -10px;
-    width: 60px;
-    height: 60px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: #2c2f3a url('images/player_idle.png') center/cover no-repeat;
     border: 3px solid #f6f6f6;
@@ -528,6 +528,26 @@ body {
 }
 .guide-avatar[hidden] { display: none !important; }
 .guide-avatar__face { pointer-events: none; }
+.guide-avatar {
+    position: absolute;
+}
+.guide-avatar__alert {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff4d4f;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    display: grid;
+    place-items: center;
+    border: 2px solid #f4ebeb;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+}
+.guide-avatar__alert[hidden] { display: none !important; }
 .guide-quests {
     position: absolute;
     top: 70px;
