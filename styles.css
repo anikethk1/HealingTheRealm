@@ -128,10 +128,10 @@ body {
 
 /* Back button (secondary) */
 .btn.btn--secondary {
-    background: transparent;
+    background: var(--btn-gradient);
     color: #fff;
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    box-shadow: none;
+    border: none;
+    box-shadow: 0 18px 35px rgba(255, 138, 216, 0.4);
 }
 .btn--small {
     padding: 0.5rem 1rem;
@@ -140,7 +140,7 @@ body {
 }
 .btn.btn--secondary:hover,
 .btn.btn--secondary:focus {
-    background: rgba(255, 255, 255, 0.08);
+    background: linear-gradient(90deg, #8f6bff, #ff86dd, #ffb066);
 }
 
 .slide__title {
@@ -428,6 +428,15 @@ body {
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
     position: relative;
 }
+.playfield--meeting {
+    background: linear-gradient(135deg, #8f6542 0%, #6e4b30 100%);
+}
+.story-reset {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 25;
+}
 #game-canvas {
     width: 100%;
     height: auto;
@@ -500,6 +509,7 @@ body {
     font-size: 0.95rem;
     font-family: var(--font-display);
     letter-spacing: 0.05em;
+    white-space: pre-line;
 }
 .guide-popup__face {
     position: absolute;
@@ -515,6 +525,12 @@ body {
 .guide-popup__actions {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+.guide-popup__actions .btn {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
 }
 .guide-avatar {
     position: absolute;
@@ -667,6 +683,8 @@ body {
     font-size: 1.2rem;
     display: grid;
     place-items: center;
+    background: transparent !important;
+    border: 2px solid rgba(255, 255, 255, 0.7);
     box-shadow: none;
     outline: none;
     transform: translateY(0);
