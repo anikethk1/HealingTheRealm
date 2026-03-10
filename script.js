@@ -3,8 +3,9 @@ const toast = document.getElementById('toast');
 let toastTimer = null;
 let authUser = localStorage.getItem('authUser') || null;
 const fullscreenBtn = document.getElementById('fullscreen-toggle');
+const fullscreenBtnIcon = fullscreenBtn?.querySelector('.fullscreen-btn__icon');
 const guidePopup = document.getElementById('guide-popup');
-const guidePopupClose = document.getElementById('guide-popup-close');
+const guidePopupTitle = document.getElementById('guide-popup-title');
 const guideAvatar = document.getElementById('guide-avatar');
 const guideQuests = document.getElementById('guide-quests');
 const guideQuestsClose = document.getElementById('guide-quests-close');
@@ -396,6 +397,16 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Fullscreen toggle
+function syncFullscreenButton() {
+    if (!fullscreenBtn) return;
+    const isFullscreen = Boolean(document.fullscreenElement);
+    fullscreenBtn.setAttribute('aria-label', isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen');
+    fullscreenBtn.title = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+    if (fullscreenBtnIcon) {
+        fullscreenBtnIcon.innerHTML = isFullscreen ? '&times;' : '&#9974;';
+    }
+}
+
 function toggleFullscreen() {
     const target = document.querySelector('.playfield');
     if (!target) return;
@@ -406,10 +417,8 @@ function toggleFullscreen() {
     }
 }
 fullscreenBtn?.addEventListener('click', toggleFullscreen);
-document.addEventListener('fullscreenchange', () => {
-    if (!fullscreenBtn) return;
-    fullscreenBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
-});
+document.addEventListener('fullscreenchange', syncFullscreenButton);
+syncFullscreenButton();
 window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'f' && !e.repeat) {
         e.preventDefault();
@@ -479,6 +488,7 @@ let girlWalking = false;
 let playerFrozen = false;
 let meetingNPCs = [];
 let meetingObstacles = [];
+let meetingChairs = [];
 let activeLines = [];
 let activeFace = 'images/player_idle.png';
 const guideLines = [
@@ -613,9 +623,6 @@ function handleDialogNext() {
     // Finished the last line: reveal portal and close dialog
     if (!portalVisible && dialogStep === npcDialog.length - 1) {
         portalVisible = true;
-        newQuest = 'Talk to the girl in front of Mirlow High School.';
-        newQuestAlert = true;
-        if (guideAvatarAlert) guideAvatarAlert.hidden = false;
         hideDialog();
         return;
     }
@@ -677,65 +684,160 @@ function meetingBlocked(x, y) {
 function initMeetingRoom() {
     meetingObstacles = [];
     meetingNPCs = [];
+    meetingChairs = [];
 
     // Player start point inside meeting room
-    hero.x = canvas.width * 0.5;
-    hero.y = canvas.height - 36;
+    hero.x = canvas.width * 0.54;
+    hero.y = canvas.height - 44;
 
-    // U-table layout
-    const tY = 80, tH = 18;
-    meetingObstacles.push({ x: 70, y: tY, w: canvas.width - 140, h: tH });           // top bar
-    meetingObstacles.push({ x: 70, y: tY, w: 18, h: 130 });                           // left bar
-    meetingObstacles.push({ x: canvas.width - 88, y: tY, w: 18, h: 130 });            // right bar
-    meetingObstacles.push({ x: 120, y: tY + 110, w: canvas.width - 240, h: tH });     // bottom bar
+    const topTable = { x: 110, y: 54, w: 360, h: 26, kind: 'table' };
+    const leftTable = { x: 86, y: 80, w: 26, h: 196, kind: 'table' };
+    const bottomTable = { x: 110, y: 250, w: 360, h: 26, kind: 'table' };
+    const presenterTable = { x: 546, y: 116, w: 26, h: 96, kind: 'table' };
 
-    // Teacher desk on right
-    const desk = { x: canvas.width - 130, y: canvas.height * 0.38, w: 70, h: 26 };
-    meetingObstacles.push(desk);
+    meetingObstacles.push(topTable, leftTable, bottomTable, presenterTable);
 
-    // Cabinets on left wall
-    meetingObstacles.push({ x: 16, y: 50, w: 46, h: 30 });
-    meetingObstacles.push({ x: 16, y: canvas.height - 80, w: 46, h: 30 });
+    const topChairXs = [132, 174, 216, 258, 300, 342, 384, 426];
+    topChairXs.forEach(x => meetingChairs.push({ x, y: 38, w: 18, h: 10, dir: 'down' }));
 
-    // NPC placements: teacher + 4 students
-    meetingNPCs.push({ x: desk.x + desk.w / 2, y: desk.y - 12, color: '#3a6de0' }); // teacher
-    meetingNPCs.push({ x: 120, y: tY + 26, color: '#d45c5c' });                      // top row
-    meetingNPCs.push({ x: canvas.width - 120, y: tY + 26, color: '#3aa76d' });
-    meetingNPCs.push({ x: 110, y: tY + 118, color: '#d9a93f' });                     // bottom row
-    meetingNPCs.push({ x: canvas.width - 110, y: tY + 118, color: '#5c6bc0' });
+    const bottomChairXs = [132, 174, 216, 258, 300, 342, 384, 426];
+    bottomChairXs.forEach(x => meetingChairs.push({ x, y: 288, w: 18, h: 10, dir: 'up' }));
+
+    const leftChairYs = [102, 146, 190, 234];
+    leftChairYs.forEach(y => meetingChairs.push({ x: 58, y, w: 10, h: 18, dir: 'right' }));
+
+    meetingNPCs.push(
+        { x: 132, y: 52, facing: 'down', shirt: '#d45c5c', hair: '#654321', skin: '#f0c9a4', pose: 'seated' },
+        { x: 174, y: 52, facing: 'down', shirt: '#5c6bc0', hair: '#33261f', skin: '#e7c19e', pose: 'seated' },
+        { x: 216, y: 52, facing: 'down', shirt: '#3aa76d', hair: '#3b2a1e', skin: '#f1d5b0', pose: 'seated' },
+        { x: 258, y: 52, facing: 'down', shirt: '#d9a93f', hair: '#4c3427', skin: '#deb58b', pose: 'seated' },
+        { x: 342, y: 52, facing: 'down', shirt: '#8e5ad6', hair: '#2f2320', skin: '#f2cfb1', pose: 'seated' },
+        { x: 384, y: 52, facing: 'down', shirt: '#e07a34', hair: '#472d1d', skin: '#e8bd93', pose: 'seated' },
+        { x: 426, y: 52, facing: 'down', shirt: '#3a6de0', hair: '#241914', skin: '#f1d5b0', pose: 'seated' },
+        { x: 132, y: 276, facing: 'up', shirt: '#3a6de0', hair: '#2c211a', skin: '#efcfaa', pose: 'seated' },
+        { x: 174, y: 276, facing: 'up', shirt: '#d45c5c', hair: '#5b3d2c', skin: '#dfb086', pose: 'seated' },
+        { x: 216, y: 276, facing: 'up', shirt: '#3aa76d', hair: '#3a291e', skin: '#f0c8a0', pose: 'seated' },
+        { x: 342, y: 276, facing: 'up', shirt: '#d9a93f', hair: '#4b3324', skin: '#e9c19a', pose: 'seated' },
+        { x: 384, y: 276, facing: 'up', shirt: '#5c6bc0', hair: '#2d2016', skin: '#f1d5b0', pose: 'seated' },
+        { x: 426, y: 276, facing: 'up', shirt: '#8e5ad6', hair: '#3b2924', skin: '#e7be99', pose: 'seated' },
+        { x: 72, y: 104, facing: 'right', shirt: '#e07a34', hair: '#2f2117', skin: '#eec9a4', pose: 'seated' },
+        { x: 72, y: 148, facing: 'right', shirt: '#5c6bc0', hair: '#4a3328', skin: '#f1d0b0', pose: 'seated' },
+        { x: 72, y: 192, facing: 'right', shirt: '#3aa76d', hair: '#3d2618', skin: '#e2b68a', pose: 'seated' },
+        { x: 72, y: 236, facing: 'right', shirt: '#d45c5c', hair: '#2d211b', skin: '#f0c49d', pose: 'seated' },
+        { x: 516, y: 174, facing: 'left', shirt: '#d45c5c', hair: '#231913', skin: '#f0caa2', pose: 'standing' }
+    );
 }
 
 function drawMeetingRoom() {
-    // Wood floor
-    ctx.fillStyle = '#cfa876';
+    // Warm wood floor with planks
+    ctx.fillStyle = '#caa06b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Light planks overlay
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (let i = 0; i < 18; i++) {
-        const y = i * 20 + (i % 2 === 0 ? 4 : 10);
-        ctx.fillRect(0, y, canvas.width, 6);
+    for (let i = 0; i < 22; i++) {
+        const y = i * 22;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.035)';
+        ctx.fillRect(0, y, canvas.width, 10);
     }
 
-    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#7d5d38';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
     meetingObstacles.forEach(r => {
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
     });
 
-    // Simple NPCs (teacher + students)
-    meetingNPCs.forEach(npc => {
-        ctx.save();
-        ctx.translate(npc.x, npc.y);
-        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 18, 10, 4, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = npc.color; ctx.fillRect(-8, -8, 16, 16);
-        ctx.fillStyle = '#f1d5b0'; ctx.fillRect(-7, -2, 14, 10);
-        ctx.fillStyle = '#1c1c1c'; ctx.fillRect(-4, 0, 2, 2); ctx.fillRect(2, 0, 2, 2);
-        ctx.fillStyle = '#2d2d2d'; ctx.fillRect(-8, 8, 16, 12);
-        ctx.restore();
+    meetingChairs.forEach(chair => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(chair.x, chair.y, chair.w, chair.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.14)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(chair.x, chair.y, chair.w, chair.h);
+    });
+
+    meetingNPCs.forEach(attendee => {
+        drawMeetingNPC(attendee);
     });
 
     // Draw hero last in room
     drawHero();
+}
+
+function drawMeetingNPC(attendee) {
+    const shirt = attendee.shirt || '#3a6de0';
+    const hair = attendee.hair || '#2c221b';
+    const skin = attendee.skin || '#f1d5b0';
+    const pose = attendee.pose || 'seated';
+
+    ctx.save();
+    ctx.translate(attendee.x, attendee.y);
+    if (attendee.facing === 'left') ctx.scale(-1, 1);
+
+    if (pose === 'standing') {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath();
+        ctx.ellipse(0, 18, 11, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shirt;
+        ctx.fillRect(-10, -2, 20, 14);
+        ctx.fillStyle = '#2d2d2d';
+        ctx.fillRect(-10, 10, 20, 4);
+        ctx.fillRect(-8, 12, 7, 12);
+        ctx.fillRect(1, 12, 7, 12);
+        ctx.fillStyle = skin;
+        ctx.fillRect(-8, -14, 16, 12);
+        ctx.fillStyle = hair;
+        ctx.fillRect(-8, -16, 16, 5);
+        ctx.fillRect(-8, -11, 3, 4);
+        ctx.fillStyle = '#1c1c1c';
+        ctx.fillRect(-4, -9, 2, 2);
+        ctx.fillRect(2, -9, 2, 2);
+        ctx.fillRect(-3, -4, 6, 1);
+        ctx.restore();
+        return;
+    }
+
+    if (attendee.facing === 'down') {
+        ctx.fillStyle = shirt;
+        ctx.fillRect(-10, -6, 20, 8);
+        ctx.fillStyle = skin;
+        ctx.fillRect(-8, 2, 16, 10);
+        ctx.fillStyle = hair;
+        ctx.fillRect(-8, 0, 16, 4);
+        ctx.fillRect(-8, 4, 3, 3);
+        ctx.fillRect(5, 4, 3, 3);
+        ctx.fillStyle = '#1c1c1c';
+        ctx.fillRect(-4, 7, 2, 2);
+        ctx.fillRect(2, 7, 2, 2);
+        ctx.fillRect(-3, 10, 6, 1);
+    } else if (attendee.facing === 'up') {
+        ctx.fillStyle = skin;
+        ctx.fillRect(-8, -12, 16, 10);
+        ctx.fillStyle = hair;
+        ctx.fillRect(-8, -14, 16, 5);
+        ctx.fillStyle = '#1c1c1c';
+        ctx.fillRect(-4, -8, 2, 2);
+        ctx.fillRect(2, -8, 2, 2);
+        ctx.fillRect(-3, -4, 6, 1);
+        ctx.fillStyle = shirt;
+        ctx.fillRect(-10, -2, 20, 8);
+    } else {
+        ctx.fillStyle = shirt;
+        ctx.fillRect(-1, -8, 11, 18);
+        ctx.fillStyle = skin;
+        ctx.fillRect(-9, -8, 10, 14);
+        ctx.fillStyle = hair;
+        ctx.fillRect(-9, -10, 10, 5);
+        ctx.fillRect(-9, -5, 2, 5);
+        ctx.fillStyle = '#1c1c1c';
+        ctx.fillRect(-4, -3, 2, 2);
+        ctx.fillRect(-2, 1, 3, 1);
+    }
+    ctx.restore();
 }
 
 function drawField() {
@@ -925,11 +1027,6 @@ function renderQuests() {
 }
 
 // Guide UI helpers
-guidePopupClose?.addEventListener('click', () => {
-    guidePopupVisible = false;
-    if (guidePopup) guidePopup.hidden = true;
-});
-
 guideAvatar?.addEventListener('click', () => {
     if (!inSchool) return;
     guideQuestsVisible = true;
@@ -956,6 +1053,7 @@ function showGuidePopup() {
     guideLineComplete = false;
     guideWalkTime = 0;
     clearGuideTimer();
+    if (guidePopupTitle) guidePopupTitle.textContent = 'The Guide Master';
     if (guidePopup) guidePopup.hidden = false;
     if (guidePopupLine) guidePopupLine.textContent = '';
     setGuideFace(activeFace);
@@ -1002,14 +1100,16 @@ guidePopupNext?.addEventListener('click', () => {
         girl.talked = true;
         girlWalking = true;
         playerFrozen = true;
+        newQuest = 'Enter the meeting room';
+        newQuestAlert = true;
+        if (guideAvatarAlert) guideAvatarAlert.hidden = false;
+        renderQuests();
     } else {
         guideIntroShown = true;
-        if (!newQuest) {
-            newQuest = 'Talk to the girl in front of Mirlow High School.';
-            newQuestAlert = true;
-            if (guideAvatarAlert) guideAvatarAlert.hidden = false;
-            renderQuests();
-        }
+        newQuest = 'Talk to the girl in front of Mirlow High School.';
+        newQuestAlert = true;
+        if (guideAvatarAlert) guideAvatarAlert.hidden = false;
+        renderQuests();
     }
 });
 
@@ -1063,8 +1163,7 @@ function loop(now) {
             const gy1 = girl.y - 10, gy2 = girl.y + 32;
             const nearGirl = hero.x > gx1 && hero.x < gx2 && hero.y > gy1 && hero.y < gy2;
             if (nearGirl) {
-                const titleEl = document.querySelector('#guide-popup h3');
-                if (titleEl) titleEl.textContent = 'Eshal';
+                if (guidePopupTitle) guidePopupTitle.textContent = 'Eshal';
                 activeLines = girlLines;
                 activeFace = 'images/player_idle.png';
                 guidePopupVisible = true;
@@ -1096,19 +1195,16 @@ function loop(now) {
     }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    if (!inSchool) {
-        drawField();
-        drawNPC();
-        // Girl only drawn in school scene
-        drawPortal();
-    } else {
-        drawSchool();
-    }
-    drawHero();
-
-    // Grey screen (meeting room) scene after entering building
     if (inGrey) {
         drawMeetingRoom();
+    } else if (!inSchool) {
+        drawField();
+        drawNPC();
+        drawPortal();
+        drawHero();
+    } else {
+        drawSchool();
+        drawHero();
     }
 
     // portal collide

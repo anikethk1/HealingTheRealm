@@ -479,6 +479,14 @@ body {
 .guide-popup__content {
     display: grid;
     gap: 0.9rem;
+    padding-left: 3.1rem;
+}
+.guide-popup__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    min-height: 40px;
 }
 .guide-popup__body h3 {
     margin: 0;
@@ -495,13 +503,13 @@ body {
 }
 .guide-popup__face {
     position: absolute;
-    top: -10px;
-    left: -10px;
-    width: 56px;
-    height: 56px;
+    top: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: #2c2f3a url('images/player_idle.png') center/cover no-repeat;
-    border: 3px solid #f6f6f6;
+    border: 2px solid #f6f6f6;
     box-shadow: 0 12px 26px rgba(0,0,0,0.45);
 }
 .guide-popup__actions {
@@ -574,8 +582,19 @@ body {
     border: none;
     background: transparent;
     color: #fff;
-    font-size: 1rem;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.5rem;
+    line-height: 1;
     cursor: pointer;
+    border-radius: 999px;
+}
+.guide-quests__close:hover,
+.guide-quests__close:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
 }
 .guide-quests__empty {
     margin: 0;
@@ -653,6 +672,9 @@ body {
     transform: translateY(0);
     transition: transform 0.18s ease;
     z-index: 6; /* stay clickable even when popup overlays */
+}
+.fullscreen-btn__icon {
+    line-height: 1;
 }
 .fullscreen-btn:hover,
 .fullscreen-btn:focus-visible {
