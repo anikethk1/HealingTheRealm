@@ -494,7 +494,9 @@ let newQuest = null;
 let newQuestAlert = false;
 let inGrey = false;
 let inGym = false;
+let inMusicRoom = false;
 let inBasketballGame = false;
+let inPianoGame = false;
 const girl = { x: 0, y: 0, visible: true, talked: false };
 let doorLocked = true;
 let girlWalking = false;
@@ -505,6 +507,7 @@ let meetingChairs = [];
 let meetingPortalVisible = false;
 let gymObstacles = [];
 let gymNPCs = [];
+let musicRoomObstacles = [];
 let activeLines = [];
 let activeFace = 'images/player_idle.png';
 let activeConversation = 'guide';
@@ -515,19 +518,64 @@ let pendingChoiceSet = null;
 let popupChoices = null;
 let albertState = 'intro';
 let albertTalkCooldown = false;
+let albertQuestCompleted = false;
+let leenaState = 'intro';
+let leenaQuestCompleted = false;
 const albert = { x: 0, y: 0 };
+const leena = { x: 0, y: 0 };
+let leenaTalkCooldown = false;
 const basketballQuestInstructions = [
-    '\n1. Objective: Successfully make 10 baskets to complete the quest.\n\n2. The Shot Meter: A bar will appear at the bottom of the screen with a moving arrow.\n- Green Area: Represents an accurate shot.\n- Red Area: Represents an inaccurate shot.\n\n3. Controls: Press the Space Bar when the arrow is inside the green area to make the basket.\n\n4. Increasing Difficulty: With every successful shot:\n- The arrow will move faster.\n- The green target area will become smaller.\n\n5. Failure Condition: If you fail to reach 10 baskets, you must speak to Albert to restart the quest.\n\nGood luck!'
+    '\n1. Objective: Successfully make 3 baskets to complete the quest.\n\n2. The Shot Meter: A bar will appear at the bottom of the screen with a moving arrow.\n- Green Area: Represents an accurate shot.\n- Red Area: Represents an inaccurate shot.\n\n3. Controls: Press the Space Bar when the arrow is inside the green area to make the basket.\n\n4. Increasing Difficulty: With every successful shot:\n- The arrow will move faster.\n- The green target area will become smaller.\n\n5. Failure Condition: If you fail to reach 3 baskets, you must speak to Albert to restart the quest.\n\nGood luck!'
 ];
 const basketballRewardLines = [
     'That was a delightful game, we should play again sometime!',
     'But I know you have to find some items for the upcoming festival, good news for you, I have one of the items, here is a DODGEBALL!'
 ];
+const basketballReplayPromptLines = [
+    "My good friend, you've come again to see me! Would you like to play basketball!"
+];
+const basketballReplayRewardLines = [
+    'That was a delightful game. We should play again sometime!'
+];
+const basketballReplayDeclineLines = [
+    'Ah, I see you are busy, we should play another time! Come back soon!'
+];
 const basketballItemLines = [
     "CONGRATULATIONS YOU'VE OBTAINED ITEM 1: DODGEBALL."
 ];
+const leenaIntroLines = [
+    "I'm so glad you are here! You're here to get one of the items, right?",
+    "Well there's a problem. I still need to tune the piano for the band.",
+    "Since you're here, would you be able to spare some time and help me please?"
+];
+const leenaRetryLines = [
+    'Would you be able to help me tune the piano?'
+];
+const leenaAcceptLines = [
+    'I love your enthusiasm! Thank you so much! I will be so grateful to you.'
+];
+const leenaRewardLines = [
+    "You're done? You did it so quickly!",
+    'Thank you so much. I am so grateful for having a friend like you. Here is a fine tuned fiddle for the festival!'
+];
+const leenaCompletedLines = [
+    'Thank you again for tuning the piano. The band is ready for the festival now!'
+];
+const pianoQuestInstructions = [
+    '\n1. Objective: Match 10 falling notes to finish tuning the piano.\n\n2. Controls: Press the number keys 1 through 5 or click the matching piano key on screen.\n\n3. Timing: Only play the note when it reaches the glowing line above the keys.\n\n4. Failure Condition: Pressing too early, pressing the wrong key, or missing a note will end the game and you must talk to Leena to restart.\n\n5. Encouragement: Every correct note keeps the tune going, so stay calm and keep the rhythm.\n\nGood luck!'
+];
+const pianoItemLines = [
+    "CONGRATULATIONS YOU'VE OBTAINED ITEM 2: FIDDLE."
+];
+const pianoEncouragements = [
+    'You play wonderfully!',
+    'That note was perfect!',
+    'Beautiful timing!',
+    'The tune is coming together!',
+    "You've got a great ear for this!"
+];
 const basketballGame = {
-    required: 10,
+    required: 3,
     made: 0,
     mode: 'idle',
     meterPos: 0.5,
@@ -539,6 +587,20 @@ const basketballGame = {
     shotDuration: 1.05,
     shotSuccess: false,
     armTimer: 0
+};
+const pianoGame = {
+    required: 10,
+    matched: 0,
+    laneCount: 5,
+    currentLane: 2,
+    noteY: -56,
+    noteSpeed: 168,
+    spawnTimer: 0.55,
+    active: false,
+    feedback: 'Press 1-5 or click a piano key when the note reaches the line.',
+    feedbackTimer: 0,
+    flashLane: -1,
+    flashTimer: 0
 };
 const guideLines = [
     'Oh, hey there!',
@@ -583,7 +645,7 @@ const albertNoLines = [
 ];
 
 function syncPlayfieldTheme() {
-    playfield?.classList.toggle('playfield--meeting', inGrey || inGym || inBasketballGame);
+    playfield?.classList.toggle('playfield--meeting', inGrey || inGym || inMusicRoom || inBasketballGame || inPianoGame);
 }
 
 function setQuest(quest, showAlert = false) {
@@ -615,6 +677,19 @@ function resetBasketballGame() {
     basketballGame.shotDuration = 1.05;
     basketballGame.shotSuccess = false;
     basketballGame.armTimer = 0;
+}
+
+function resetPianoGame() {
+    pianoGame.matched = 0;
+    pianoGame.currentLane = Math.floor(Math.random() * pianoGame.laneCount);
+    pianoGame.noteY = -56;
+    pianoGame.noteSpeed = 168;
+    pianoGame.spawnTimer = 0.55;
+    pianoGame.active = false;
+    pianoGame.feedback = 'Press 1-5 or click a piano key when the note reaches the line.';
+    pianoGame.feedbackTimer = 0;
+    pianoGame.flashLane = -1;
+    pianoGame.flashTimer = 0;
 }
 
 function updatePopupChoiceButtons() {
@@ -720,12 +795,20 @@ function startWorldDemo(startScene = currentStartScene) {
     doorLocked = true;
     inGrey = false;
     inGym = false;
+    inMusicRoom = false;
     inBasketballGame = false;
+    inPianoGame = false;
     managerIntroShown = false;
     meetingPortalVisible = false;
     albertState = 'intro';
     albertTalkCooldown = false;
+    albertQuestCompleted = false;
+    leenaState = 'intro';
+    leenaQuestCompleted = false;
+    leenaTalkCooldown = false;
+    musicRoomObstacles = [];
     resetBasketballGame();
+    resetPianoGame();
     girl.visible = true;
     girl.talked = false;
     girlWalking = false;
@@ -762,6 +845,7 @@ function startWorldDemo(startScene = currentStartScene) {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
         dialogNext?.addEventListener('click', handleDialogNext);
+        canvas?.addEventListener('mousedown', handleCanvasPointerDown);
         document.addEventListener('mousedown', (e) => {
             if (dialogActive && !dialogComplete) {
                 finishDialog();
@@ -799,6 +883,11 @@ function handleDialogNext() {
 
 function handleKeyDown(e) {
     const k = e.key.toLowerCase();
+    if (inPianoGame && !guidePopupVisible && !loading && ['1', '2', '3', '4', '5'].includes(k)) {
+        e.preventDefault();
+        handlePianoInput(Number(k) - 1);
+        return;
+    }
     if (inBasketballGame && !guidePopupVisible && !loading && k === ' ') {
         e.preventDefault();
         handleBasketballShot();
@@ -826,9 +915,30 @@ function handleKeyUp(e) {
     keysDown.delete(e.key.toLowerCase());
 }
 
+function handleCanvasPointerDown(e) {
+    if (!inPianoGame || guidePopupVisible || loading || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const pointerX = (e.clientX - rect.left) * scaleX;
+    const pointerY = (e.clientY - rect.top) * scaleY;
+    const layout = getPianoLayout();
+
+    if (pointerY < layout.keyY || pointerY > layout.keyY + layout.keyHeight) return;
+
+    for (let lane = 0; lane < pianoGame.laneCount; lane++) {
+        const keyX = layout.keyX + lane * (layout.keyWidth + layout.keyGap);
+        if (pointerX >= keyX && pointerX <= keyX + layout.keyWidth) {
+            handlePianoInput(lane);
+            return;
+        }
+    }
+}
+
 function blocked(x, y) {
     if (inGrey) return meetingBlocked(x, y);
     if (inGym) return gymBlocked(x, y);
+    if (inMusicRoom) return musicRoomBlocked(x, y);
     if (inSchool && schoolRect) {
         const inside = x > schoolRect.x1 && x < schoolRect.x2 && y > schoolRect.y1 && y < schoolRect.y2;
         if (!inside) return false;
@@ -861,6 +971,15 @@ function meetingBlocked(x, y) {
 function gymBlocked(x, y) {
     const margin = 12;
     if (x < margin || x > canvas.width - margin || y < margin || y > canvas.height - margin) return true;
+    return false;
+}
+
+function musicRoomBlocked(x, y) {
+    const margin = 12;
+    if (x < margin || x > canvas.width - margin || y < margin || y > canvas.height - margin) return true;
+    for (const r of musicRoomObstacles) {
+        if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true;
+    }
     return false;
 }
 
@@ -922,6 +1041,21 @@ function initGymCourt() {
     albert.y = canvas.height * 0.5 + 34;
     gymNPCs.push({ x: albert.x, y: albert.y, facing: 'left', pose: 'standing' });
     albertTalkCooldown = false;
+}
+
+function initMusicRoom() {
+    musicRoomObstacles = [];
+    hero.x = canvas.width - 104;
+    hero.y = canvas.height - 64;
+    leena.x = 108;
+    leena.y = 108;
+    leenaTalkCooldown = false;
+
+    musicRoomObstacles.push(
+        { x: 204, y: 14, w: 238, h: 42 },
+        { x: 44, y: 146, w: 182, h: 136 },
+        { x: 274, y: 84, w: 158, h: 64 }
+    );
 }
 
 function drawMeetingRoom() {
@@ -1059,8 +1193,409 @@ function drawGymCourt() {
     drawHalfCourt(true);
     drawHalfCourt(false);
 
+    if (albertQuestCompleted) {
+        const portalX = 58;
+        const portalY = 54;
+        drawIndoorPortal(portalX, portalY);
+        portalPos = { x: portalX, y: portalY - 10, rx: 10, ry: 5, target: 'music-room' };
+    }
+
     drawMeetingNPC({ x: albert.x, y: albert.y, facing: 'left', pose: 'standing', shirt: '#3a6de0', hair: '#2d2018', skin: '#efcb9d' });
     drawHero();
+}
+
+function drawMusicRoom() {
+    const w = canvas.width;
+    const h = canvas.height;
+    portalPos = null;
+
+    ctx.fillStyle = '#3d8f8f';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = '#4c9f9b';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(40, 48);
+    ctx.lineTo(40, h - 18);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w, 0);
+    ctx.lineTo(w - 40, 48);
+    ctx.lineTo(w - 40, h - 18);
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#5fb3ac';
+    ctx.fillRect(0, 0, w, 52);
+
+    const floorY = 54;
+    ctx.fillStyle = '#6b3321';
+    ctx.fillRect(24, floorY, w - 48, h - floorY - 12);
+
+    for (let i = 0; i < 10; i++) {
+        const plankY = floorY + i * 26;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        ctx.fillRect(24, plankY, w - 48, 14);
+    }
+    for (let i = 0; i < 12; i++) {
+        const seamX = 54 + i * 46;
+        ctx.strokeStyle = 'rgba(80, 28, 18, 0.28)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(seamX, floorY + 4);
+        ctx.lineTo(seamX + (i % 2 === 0 ? 10 : -8), h - 20);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = '#b98a53';
+    ctx.fillRect(202, 16, 236, 34);
+    ctx.fillStyle = '#2f7a46';
+    ctx.fillRect(214, 22, 212, 22);
+    ctx.strokeStyle = '#7a522d';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(214, 22, 212, 22);
+    ctx.fillStyle = '#f7f4ec';
+    ctx.fillRect(356, 37, 18, 3);
+    ctx.fillRect(380, 36, 14, 3);
+    ctx.fillStyle = '#d7c48d';
+    ctx.fillRect(406, 31, 16, 8);
+
+    const drawDrum = (x, y, r, shell = '#cf4d42') => {
+        ctx.fillStyle = shell;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#dcdcdc';
+        ctx.beginPath();
+        ctx.arc(x, y, r - 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#6a6a6a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+    };
+    const drawCymbal = (x, y, rx, ry) => {
+        ctx.fillStyle = '#dfc160';
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#9d7e2d';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#8a6d21';
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    };
+
+    drawCymbal(98, 150, 24, 12);
+    drawCymbal(70, 198, 18, 10);
+    drawCymbal(178, 242, 28, 14);
+    drawDrum(124, 182, 26);
+    drawDrum(84, 230, 20);
+    drawDrum(156, 230, 24);
+    drawDrum(150, 282, 32);
+    drawDrum(68, 286, 18, '#444');
+    ctx.strokeStyle = '#8c8c8c';
+    ctx.lineWidth = 3;
+    [
+        [98, 163, 98, 208],
+        [70, 208, 58, 246],
+        [178, 256, 188, 300],
+        [124, 208, 114, 252],
+        [84, 248, 76, 282],
+        [156, 248, 164, 286]
+    ].forEach(([x1, y1, x2, y2]) => {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    });
+
+    ctx.save();
+    ctx.translate(348, 110);
+    ctx.rotate(-0.18);
+    ctx.fillStyle = '#5d2f1d';
+    ctx.beginPath();
+    ctx.ellipse(-18, 0, 28, 22, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(-2, -6, 102, 12);
+    ctx.fillStyle = '#f1f1f1';
+    ctx.beginPath();
+    ctx.moveTo(-2, -2);
+    ctx.lineTo(28, -12);
+    ctx.lineTo(44, 6);
+    ctx.lineTo(16, 20);
+    ctx.lineTo(-2, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#be9a62';
+    ctx.fillRect(98, -7, 26, 14);
+    ctx.fillRect(122, -4, 12, 8);
+    ctx.strokeStyle = '#4d2c1c';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+        const stringY = -5 + i * 2;
+        ctx.beginPath();
+        ctx.moveTo(0, stringY);
+        ctx.lineTo(134, stringY * 0.4);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    const exitPortalX = w - 56;
+    const exitPortalY = h - 42;
+    drawIndoorPortal(exitPortalX, exitPortalY);
+    portalPos = { x: exitPortalX, y: exitPortalY - 10, rx: 10, ry: 5, target: 'gym' };
+
+    drawMeetingNPC({ x: leena.x, y: leena.y, facing: 'left', pose: 'standing', shirt: '#e56e8f', hair: '#3b2a24', skin: '#f0c8a2' });
+
+    drawHero();
+}
+
+function getPianoLayout() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const keyGap = 10;
+    const keyWidth = 84;
+    const keyHeight = 84;
+    const totalWidth = pianoGame.laneCount * keyWidth + (pianoGame.laneCount - 1) * keyGap;
+    const keyX = (w - totalWidth) / 2;
+    const keyY = h - 98;
+    return {
+        laneCenter: (lane) => keyX + lane * (keyWidth + keyGap) + keyWidth / 2,
+        keyGap,
+        keyHeight,
+        keyWidth,
+        keyX,
+        keyY,
+        missY: keyY + 34,
+        strikeY: keyY + 18,
+        topY: 62,
+        window: 22
+    };
+}
+
+function getNextPianoLane() {
+    let next = Math.floor(Math.random() * pianoGame.laneCount);
+    if (pianoGame.laneCount > 1) {
+        while (next === pianoGame.currentLane) {
+            next = Math.floor(Math.random() * pianoGame.laneCount);
+        }
+    }
+    return next;
+}
+
+function showPianoInstructions() {
+    playerFrozen = true;
+    openInstantPopup('Instructions', 'images/player_idle.png', pianoQuestInstructions, 'piano-instructions', 'Done');
+}
+
+function startPianoQuest() {
+    loading = true;
+    playerFrozen = true;
+    if (guideQuests) guideQuests.hidden = true;
+    guideQuestsVisible = false;
+    if (guideAvatar) guideAvatar.hidden = true;
+    setLoadingMessage();
+    if (loadingOverlay) loadingOverlay.hidden = false;
+    setTimeout(() => {
+        if (loadingOverlay) loadingOverlay.hidden = true;
+        inMusicRoom = false;
+        inPianoGame = true;
+        resetPianoGame();
+        setQuest('Tune 10 notes for Leena', false);
+        syncPlayfieldTheme();
+        loading = false;
+        showPianoInstructions();
+    }, 1400);
+}
+
+function exitPianoQuest(message, nextLeenaState = 'awaiting-tune', quest = 'Talk to Leena again to restart the piano tuning.') {
+    loading = true;
+    playerFrozen = true;
+    setLoadingMessage(message);
+    if (loadingOverlay) loadingOverlay.hidden = false;
+    setTimeout(() => {
+        if (loadingOverlay) loadingOverlay.hidden = true;
+        setLoadingMessage();
+        inPianoGame = false;
+        inMusicRoom = true;
+        initMusicRoom();
+        if (guideAvatar) guideAvatar.hidden = false;
+        leenaState = nextLeenaState;
+        setQuest(quest, Boolean(quest));
+        syncPlayfieldTheme();
+        loading = false;
+        playerFrozen = false;
+    }, 1800);
+}
+
+function completePianoQuest() {
+    loading = true;
+    playerFrozen = true;
+    setLoadingMessage('The piano is tuned and the band is ready.');
+    if (loadingOverlay) loadingOverlay.hidden = false;
+    setTimeout(() => {
+        if (loadingOverlay) loadingOverlay.hidden = true;
+        setLoadingMessage();
+        inPianoGame = false;
+        inMusicRoom = true;
+        initMusicRoom();
+        if (guideAvatar) guideAvatar.hidden = false;
+        leenaState = 'completed';
+        setQuest(null);
+        syncPlayfieldTheme();
+        loading = false;
+        openGuideConversation('Leena', 'images/leena.jpg', leenaRewardLines, 'leena-reward');
+    }, 1800);
+}
+
+function openLeenaConversation() {
+    playerFrozen = true;
+    leenaTalkCooldown = true;
+    if (leenaQuestCompleted) {
+        openGuideConversation('Leena', 'images/leena.jpg', leenaCompletedLines, 'leena-completed');
+        return;
+    }
+    if (leenaState === 'awaiting-tune') {
+        openGuideConversation('Leena', 'images/leena.jpg', leenaRetryLines, 'leena-retry', 'leena-help');
+        return;
+    }
+    openGuideConversation('Leena', 'images/leena.jpg', leenaIntroLines, 'leena-intro', 'leena-help');
+}
+
+function handlePianoInput(lane) {
+    if (!inPianoGame || !pianoGame.active || guidePopupVisible || loading) return;
+    const layout = getPianoLayout();
+    const correctLane = lane === pianoGame.currentLane;
+    const onBeat = Math.abs(pianoGame.noteY - layout.strikeY) <= layout.window;
+    if (!correctLane || !onBeat) {
+        exitPianoQuest('The piano slipped out of tune. Talk to Leena again to restart.');
+        return;
+    }
+
+    pianoGame.matched += 1;
+    pianoGame.feedback = pianoEncouragements[(pianoGame.matched - 1) % pianoEncouragements.length];
+    pianoGame.feedbackTimer = 1.35;
+    pianoGame.flashLane = lane;
+    pianoGame.flashTimer = 0.18;
+
+    if (pianoGame.matched >= pianoGame.required) {
+        pianoGame.matched = pianoGame.required;
+        completePianoQuest();
+        return;
+    }
+
+    pianoGame.currentLane = getNextPianoLane();
+    pianoGame.noteY = -56;
+    pianoGame.noteSpeed = Math.min(250, pianoGame.noteSpeed + 8);
+    pianoGame.spawnTimer = 0.25;
+}
+
+function updatePianoGame(dt) {
+    if (!inPianoGame) return;
+    if (pianoGame.feedbackTimer > 0) pianoGame.feedbackTimer = Math.max(0, pianoGame.feedbackTimer - dt);
+    if (pianoGame.flashTimer > 0) {
+        pianoGame.flashTimer = Math.max(0, pianoGame.flashTimer - dt);
+        if (pianoGame.flashTimer === 0) pianoGame.flashLane = -1;
+    }
+    if (!pianoGame.active || guidePopupVisible || loading) return;
+
+    if (pianoGame.spawnTimer > 0) {
+        pianoGame.spawnTimer = Math.max(0, pianoGame.spawnTimer - dt);
+        return;
+    }
+
+    const layout = getPianoLayout();
+    pianoGame.noteY += pianoGame.noteSpeed * dt;
+    if (pianoGame.noteY > layout.missY) {
+        exitPianoQuest('You missed the note. Talk to Leena again to restart.');
+    }
+}
+
+function drawPianoScene() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const layout = getPianoLayout();
+    portalPos = null;
+
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#16263a');
+    bg.addColorStop(0.58, '#223c57');
+    bg.addColorStop(1, '#0f1724');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let i = 0; i < pianoGame.laneCount; i++) {
+        const laneX = layout.keyX + i * (layout.keyWidth + layout.keyGap);
+        ctx.fillRect(laneX + 8, layout.topY, layout.keyWidth - 16, layout.keyY - layout.topY);
+    }
+
+    ctx.fillStyle = '#3e2b1f';
+    ctx.fillRect(0, h - 122, w, 122);
+    ctx.fillStyle = '#5f4634';
+    ctx.fillRect(0, h - 112, w, 16);
+
+    ctx.strokeStyle = '#ffd978';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(layout.keyX - 18, layout.strikeY);
+    ctx.lineTo(w - layout.keyX + 18, layout.strikeY);
+    ctx.stroke();
+
+    for (let lane = 0; lane < pianoGame.laneCount; lane++) {
+        const keyX = layout.keyX + lane * (layout.keyWidth + layout.keyGap);
+        const flashing = pianoGame.flashLane === lane && pianoGame.flashTimer > 0;
+        ctx.fillStyle = flashing ? '#ffe8a3' : '#f5f2ea';
+        ctx.fillRect(keyX, layout.keyY, layout.keyWidth, layout.keyHeight);
+        ctx.strokeStyle = '#2a1f18';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(keyX, layout.keyY, layout.keyWidth, layout.keyHeight);
+        ctx.fillStyle = '#2a1f18';
+        ctx.font = '18px "Press Start 2P", cursive';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(lane + 1), keyX + layout.keyWidth / 2, layout.keyY + 50);
+    }
+
+    if (pianoGame.spawnTimer <= 0) {
+        const noteX = layout.laneCenter(pianoGame.currentLane);
+        const noteY = pianoGame.noteY;
+        ctx.fillStyle = '#ffd978';
+        ctx.beginPath();
+        ctx.ellipse(noteX - 8, noteY, 14, 10, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(noteX + 3, noteY - 44, 6, 40);
+        ctx.beginPath();
+        ctx.moveTo(noteX + 9, noteY - 44);
+        ctx.lineTo(noteX + 28, noteY - 32);
+        ctx.lineTo(noteX + 9, noteY - 22);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px "Press Start 2P", cursive';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Tune: ${pianoGame.matched}/${pianoGame.required}`, w / 2, 28);
+
+    const feedback = pianoGame.feedbackTimer > 0
+        ? pianoGame.feedback
+        : 'Match the note exactly at the glowing line.';
+    ctx.font = '11px "Press Start 2P", cursive';
+    ctx.fillStyle = '#fff4c4';
+    ctx.fillText(feedback, w / 2, 52);
+
+    ctx.fillStyle = '#d8e8ff';
+    ctx.font = '9px "Press Start 2P", cursive';
+    ctx.fillText('Use keys 1-5 or click the piano keys', w / 2, h - 136);
 }
 
 function handleBasketballShot() {
@@ -1562,7 +2097,7 @@ function renderQuests() {
 
 // Guide UI helpers
 guideAvatar?.addEventListener('click', () => {
-    if (!inSchool && !inGrey && !inGym) return;
+    if (!inSchool && !inGrey && !inGym && !inMusicRoom && !inPianoGame) return;
     guideQuestsVisible = true;
     if (guideQuests) guideQuests.hidden = false;
     if (guideAvatarAlert) guideAvatarAlert.hidden = true;
@@ -1631,6 +2166,40 @@ function buildPopupChoices(choiceSet) {
                         albertState = 'awaiting-practice';
                         openGuideConversation('Albert', 'images/albert.jpg', albertNoLines, 'albert-no');
                     }
+                }
+            ];
+        case 'albert-replay-practice':
+            return [
+                {
+                    label: 'Yes',
+                    action: () => {
+                        albertState = 'practice';
+                        albertTalkCooldown = true;
+                        closeGuideConversation();
+                        startBasketballQuest();
+                    }
+                },
+                {
+                    label: 'No',
+                    action: () => {
+                        albertState = 'completed';
+                        openGuideConversation('Albert', 'images/albert.jpg', basketballReplayDeclineLines, 'albert-replay-no');
+                    }
+                }
+            ];
+        case 'leena-help':
+            return [
+                {
+                    label: 'Yes',
+                    action: () => openGuideConversation('Leena', 'images/leena.jpg', leenaAcceptLines, 'leena-accept')
+                },
+                {
+                    label: 'Absolutely!',
+                    action: () => openGuideConversation('Leena', 'images/leena.jpg', leenaAcceptLines, 'leena-accept')
+                },
+                {
+                    label: 'YES!!!',
+                    action: () => openGuideConversation('Leena', 'images/leena.jpg', leenaAcceptLines, 'leena-accept')
                 }
             ];
         default:
@@ -1718,14 +2287,16 @@ function startBasketballQuest() {
         inGym = false;
         inBasketballGame = true;
         resetBasketballGame();
-        setQuest('Make 10 baskets for Albert', false);
+        setQuest('Make 3 baskets for Albert', false);
         syncPlayfieldTheme();
         loading = false;
         showBasketballInstructions();
     }, 1400);
 }
 
-function exitBasketballQuest(message, nextAlbertState = 'awaiting-practice', quest = 'Talk to Albert again and restart the quest.') {
+function exitBasketballQuest(message, nextAlbertState = null, quest = undefined) {
+    if (nextAlbertState === null) nextAlbertState = albertQuestCompleted ? 'completed' : 'awaiting-practice';
+    if (quest === undefined) quest = albertQuestCompleted ? null : 'Talk to Albert again and restart the quest.';
     loading = true;
     playerFrozen = true;
     setLoadingMessage(message);
@@ -1764,17 +2335,25 @@ function completeBasketballQuest() {
         setQuest(null);
         syncPlayfieldTheme();
         loading = false;
-        openGuideConversation('Albert', 'images/albert.jpg', basketballRewardLines, 'basketball-reward');
+        if (!albertQuestCompleted) {
+            openGuideConversation('Albert', 'images/albert.jpg', basketballRewardLines, 'basketball-reward');
+            return;
+        }
+        openGuideConversation('Albert', 'images/albert.jpg', basketballReplayRewardLines, 'basketball-replay-reward');
     }, 1800);
 }
 
 function openAlbertConversation() {
-    if (albertState === 'accepted' || albertState === 'completed') {
+    if (albertState === 'accepted') {
         albertTalkCooldown = true;
         return;
     }
     playerFrozen = true;
     albertTalkCooldown = true;
+    if (albertQuestCompleted) {
+        openGuideConversation('Albert', 'images/albert.jpg', basketballReplayPromptLines, 'albert-replay-prompt', 'albert-replay-practice');
+        return;
+    }
     if (albertState === 'awaiting-practice') {
         openGuideConversation('Albert', 'images/albert.jpg', albertPracticePromptLines, 'albert-practice-prompt', 'albert-practice');
         return;
@@ -1867,8 +2446,18 @@ guidePopupNext?.addEventListener('click', () => {
         playerFrozen = false;
         return;
     }
+    if (activeConversation === 'piano-instructions') {
+        closeGuideConversation();
+        pianoGame.active = true;
+        playerFrozen = false;
+        return;
+    }
     if (activeConversation === 'basketball-reward') {
         openInstantPopup('Item Obtained', 'images/player_idle.png', basketballItemLines, 'basketball-item', 'Done');
+        return;
+    }
+    if (activeConversation === 'leena-reward') {
+        openInstantPopup('Item Obtained', 'images/player_idle.png', pianoItemLines, 'piano-item', 'Done');
         return;
     }
     // done
@@ -1888,11 +2477,34 @@ guidePopupNext?.addEventListener('click', () => {
     } else if (activeConversation === 'albert-no') {
         playerFrozen = false;
         albertTalkCooldown = true;
+    } else if (activeConversation === 'albert-replay-no') {
+        playerFrozen = false;
+        albertTalkCooldown = true;
+    } else if (activeConversation === 'leena-intro' || activeConversation === 'leena-retry') {
+        playerFrozen = false;
+        leenaTalkCooldown = true;
+    } else if (activeConversation === 'leena-accept') {
+        leenaTalkCooldown = true;
+        startPianoQuest();
     } else if (activeConversation === 'basketball-success') {
         playerFrozen = false;
-    } else if (activeConversation === 'basketball-item') {
+    } else if (activeConversation === 'basketball-replay-reward') {
         playerFrozen = false;
+        albertTalkCooldown = true;
+    } else if (activeConversation === 'basketball-item') {
+        albertQuestCompleted = true;
+        playerFrozen = false;
+        albertTalkCooldown = true;
+        setQuest('Go through the portal in the top-left corner to reach the music room', true);
+    } else if (activeConversation === 'piano-item') {
+        leenaQuestCompleted = true;
+        leenaState = 'completed';
+        playerFrozen = false;
+        leenaTalkCooldown = true;
         setQuest(null);
+    } else if (activeConversation === 'leena-completed') {
+        playerFrozen = false;
+        leenaTalkCooldown = true;
     } else {
         guideIntroShown = true;
         setQuest('Talk to the girl in front of Mirlow High School.', true);
@@ -1914,8 +2526,9 @@ function loop(now) {
     const dt = Math.min((now-lastTime)/1000, 0.05);
     lastTime = now;
     updateBasketballGame(dt);
+    updatePianoGame(dt);
     let vx=0, vy=0;
-    if (!dialogActive && !loading && !guidePopupVisible && !guideQuestsVisible && !girlWalking && !playerFrozen && !inBasketballGame) {
+    if (!dialogActive && !loading && !guidePopupVisible && !guideQuestsVisible && !girlWalking && !playerFrozen && !inBasketballGame && !inPianoGame) {
         if (keysDown.has('w')||keysDown.has('arrowup')) vy -= 1;
         if (keysDown.has('s')||keysDown.has('arrowdown')) vy += 1;
         if (keysDown.has('a')||keysDown.has('arrowleft')) vx -= 1;
@@ -1943,7 +2556,7 @@ function loop(now) {
         hero.frameTimer = 0;
     }
 
-    if (!inSchool && !inGrey && !inGym) {
+    if (!inSchool && !inGrey && !inGym && !inMusicRoom && !inPianoGame) {
         // Interaction zone: near the NPC along the road band
         const fx1 = npc.x - 48;
         const fx2 = npc.x + 48;
@@ -1988,6 +2601,12 @@ function loop(now) {
             openAlbertConversation();
         }
         if (!nearAlbert) albertTalkCooldown = false;
+    } else if (inMusicRoom) {
+        const nearLeena = hero.x > leena.x - 34 && hero.x < leena.x + 34 && hero.y > leena.y - 28 && hero.y < leena.y + 34;
+        if (nearLeena && !leenaTalkCooldown && !dialogActive && !guidePopupVisible) {
+            openLeenaConversation();
+        }
+        if (!nearLeena) leenaTalkCooldown = false;
     }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -1995,8 +2614,12 @@ function loop(now) {
         drawMeetingRoom();
     } else if (inBasketballGame) {
         drawBasketballScene();
+    } else if (inPianoGame) {
+        drawPianoScene();
     } else if (inGym) {
         drawGymCourt();
+    } else if (inMusicRoom) {
+        drawMusicRoom();
     } else if (!inSchool) {
         drawField();
         drawNPC();
@@ -2023,6 +2646,8 @@ function loop(now) {
                     inSchool = true;
                     inGrey = false;
                     inGym = false;
+                    inMusicRoom = false;
+                    inPianoGame = false;
                     hero.x = tile*2;
                     hero.y = canvas.height - tile*2;
                     loading = false;
@@ -2042,9 +2667,23 @@ function loop(now) {
                     inGrey = false;
                     inSchool = false;
                     inGym = true;
+                    inMusicRoom = false;
+                    inPianoGame = false;
                     playerFrozen = false;
                     hideDialog();
                     initGymCourt();
+                    syncPlayfieldTheme();
+                    loading = false;
+                } else if (target === 'music-room') {
+                    inGrey = false;
+                    inSchool = false;
+                    inGym = false;
+                    inMusicRoom = true;
+                    inPianoGame = false;
+                    playerFrozen = false;
+                    hideDialog();
+                    initMusicRoom();
+                    setQuest(leenaQuestCompleted ? null : 'Talk to Leena in the music room', !leenaQuestCompleted);
                     syncPlayfieldTheme();
                     loading = false;
                 }
@@ -2071,6 +2710,8 @@ function loop(now) {
                     inGrey = true;
                     inSchool = false;
                     inGym = false;
+                    inMusicRoom = false;
+                    inPianoGame = false;
                     hideDialog();
                     initMeetingRoom();
                     playerFrozen = true;
