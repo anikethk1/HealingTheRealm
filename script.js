@@ -1,7 +1,7 @@
 ﻿const slides = document.querySelectorAll('.slide');
 const toast = document.getElementById('toast');
 let toastTimer = null;
-let authUser = localStorage.getItem('authUser') || null;
+let authUser = null;
 const playfield = document.querySelector('.playfield');
 const storyResetBtn = document.getElementById('story-reset');
 const fullscreenBtn = document.getElementById('fullscreen-toggle');
@@ -44,10 +44,6 @@ function setAuthUser(username) {
 function showSlide(id) {
     const next = document.getElementById(id);
     if (!next) return;
-    const publicSlides = new Set(['login-slide', 'signup-slide', 'world-slide']);
-    if (!isAuthenticated() && !publicSlides.has(id)) {
-        return showSlide('login-slide');
-    }
     slides.forEach(slide => {
         const active = slide === next;
         slide.classList.toggle('is-active', active);
@@ -81,7 +77,7 @@ document.getElementById('start-game')?.addEventListener('click', () => navigateT
 
 // History pop
 window.addEventListener('popstate', (e) => {
-    const id = e.state?.slide || (location.hash ? location.hash.slice(1) : 'login-slide');
+    const id = e.state?.slide || (location.hash ? location.hash.slice(1) : 'world-slide');
     showSlide(id);
 });
 
