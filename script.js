@@ -60,7 +60,7 @@ function navigateTo(id, push = true) {
     showSlide(id);
     const method = push ? 'pushState' : 'replaceState';
     try {
-        history[method]({ slide: id }, '', `#${id}`);
+        history[method]({ slide: id }, '', `${location.pathname}${location.search}`);
     } catch (_) {}
 }
 
@@ -77,7 +77,7 @@ document.getElementById('start-game')?.addEventListener('click', () => navigateT
 
 // History pop
 window.addEventListener('popstate', (e) => {
-    const id = e.state?.slide || (location.hash ? location.hash.slice(1) : 'world-slide');
+    const id = e.state?.slide || 'world-slide';
     showSlide(id);
 });
 
@@ -390,7 +390,6 @@ if (checkinForm) {
 
 // Initial slide on load
 window.addEventListener('DOMContentLoaded', () => {
-    const initialFromHash = location.hash ? location.hash.slice(1) : null;
     // Always drop into the world slide for a fresh NPC scene
     navigateTo('world-slide', false);
     startWorldDemo();
