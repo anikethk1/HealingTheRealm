@@ -558,7 +558,7 @@ const leenaCompletedLines = [
     'Thank you again for tuning the piano. The band is ready for the festival now!'
 ];
 const pianoQuestInstructions = [
-    '\n1. Objective: Match 10 falling notes to finish tuning the piano.\n\n2. Controls: Press the number keys 1 through 5 or click the matching piano key on screen.\n\n3. Timing: Only play the note when it reaches the glowing line above the keys.\n\n4. Failure Condition: Pressing too early, pressing the wrong key, or missing a note will end the game and you must talk to Leena to restart.\n\n5. Encouragement: Every correct note keeps the tune going, so stay calm and keep the rhythm.\n\nGood luck!'
+    '\n1. Objective: Match 10 falling notes to finish tuning the piano.\n\n2. Controls: Press the number keys 1 through 5 or click the matching piano key on screen.\n\n3. Timing: Only play the note when it touches the white key.\n\n4. Failure Condition: Pressing too early, pressing the wrong key, or missing a note will end the game and you must talk to Leena to restart.\n\nGood luck!'
 ];
 const pianoItemLines = [
     "CONGRATULATIONS YOU'VE OBTAINED ITEM 2: FIDDLE."
@@ -590,10 +590,10 @@ const pianoGame = {
     laneCount: 5,
     currentLane: 2,
     noteY: -56,
-    noteSpeed: 168,
-    spawnTimer: 0.55,
+    noteSpeed: 240,
+    spawnTimer: 0.4,
     active: false,
-    feedback: 'Press 1-5 or click a piano key when the note reaches the line.',
+    feedback: 'Press 1-5 or click a piano key when the note touches the white key.',
     feedbackTimer: 0,
     flashLane: -1,
     flashTimer: 0
@@ -679,10 +679,10 @@ function resetPianoGame() {
     pianoGame.matched = 0;
     pianoGame.currentLane = Math.floor(Math.random() * pianoGame.laneCount);
     pianoGame.noteY = -56;
-    pianoGame.noteSpeed = 168;
-    pianoGame.spawnTimer = 0.55;
+    pianoGame.noteSpeed = 240;
+    pianoGame.spawnTimer = 0.4;
     pianoGame.active = false;
-    pianoGame.feedback = 'Press 1-5 or click a piano key when the note reaches the line.';
+    pianoGame.feedback = 'Press 1-5 or click a piano key when the note touches the white key.';
     pianoGame.feedbackTimer = 0;
     pianoGame.flashLane = -1;
     pianoGame.flashTimer = 0;
@@ -1371,10 +1371,9 @@ function getPianoLayout() {
         keyWidth,
         keyX,
         keyY,
-        missY: keyY + 34,
-        strikeY: keyY + 18,
+        missY: keyY + keyHeight + 12,
         topY: 62,
-        window: 22
+        noteRadiusY: 10
     };
 }
 
@@ -1471,8 +1470,10 @@ function handlePianoInput(lane) {
     if (!inPianoGame || !pianoGame.active || guidePopupVisible || loading) return;
     const layout = getPianoLayout();
     const correctLane = lane === pianoGame.currentLane;
-    const onBeat = Math.abs(pianoGame.noteY - layout.strikeY) <= layout.window;
-    if (!correctLane || !onBeat) {
+    const noteTop = pianoGame.noteY - layout.noteRadiusY;
+    const noteBottom = pianoGame.noteY + layout.noteRadiusY;
+    const touchingKey = noteBottom >= layout.keyY && noteTop <= layout.keyY + layout.keyHeight;
+    if (!correctLane || !touchingKey) {
         exitPianoQuest('The piano slipped out of tune. Talk to Leena again to restart.');
         return;
     }
@@ -1491,8 +1492,8 @@ function handlePianoInput(lane) {
 
     pianoGame.currentLane = getNextPianoLane();
     pianoGame.noteY = -56;
-    pianoGame.noteSpeed = Math.min(250, pianoGame.noteSpeed + 8);
-    pianoGame.spawnTimer = 0.25;
+    pianoGame.noteSpeed = Math.min(420, 240 + pianoGame.matched * 24);
+    pianoGame.spawnTimer = Math.max(0.12, 0.28 - pianoGame.matched * 0.012);
 }
 
 function updatePianoGame(dt) {
@@ -1540,13 +1541,6 @@ function drawPianoScene() {
     ctx.fillStyle = '#5f4634';
     ctx.fillRect(0, h - 112, w, 16);
 
-    ctx.strokeStyle = '#ffd978';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(layout.keyX - 18, layout.strikeY);
-    ctx.lineTo(w - layout.keyX + 18, layout.strikeY);
-    ctx.stroke();
-
     for (let lane = 0; lane < pianoGame.laneCount; lane++) {
         const keyX = layout.keyX + lane * (layout.keyWidth + layout.keyGap);
         const flashing = pianoGame.flashLane === lane && pianoGame.flashTimer > 0;
@@ -1584,7 +1578,7 @@ function drawPianoScene() {
 
     const feedback = pianoGame.feedbackTimer > 0
         ? pianoGame.feedback
-        : 'Match the note exactly at the glowing line.';
+        : 'Match the note when it touches the white key.';
     ctx.font = '11px "Press Start 2P", cursive';
     ctx.fillStyle = '#fff4c4';
     ctx.fillText(feedback, w / 2, 52);
